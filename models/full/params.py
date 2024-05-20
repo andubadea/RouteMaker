@@ -4,6 +4,7 @@ import osmnx as ox
 import networkx as nx
 import sys
 import numpy
+from copy import copy
 numpy.set_printoptions(threshold=sys.maxsize)
 
 class Parameters:
@@ -105,11 +106,11 @@ class Parameters:
         # Latest arrival time for each flight
         self.Ta_f = self.compute_arr_time()
         # For each flight, the origin node
-        self.O_f = np.array([self.scenario[acid][1] for acid in self.scenario], 
-                            dtype = int)
+        self.O_f = np.array([self.n2idx[self.scenario[acid][1]] 
+                             for acid in self.scenario], dtype = int)
         # For each flight, the destination node
-        self.D_f = np.array([self.scenario[acid][2] for acid in self.scenario], 
-                            dtype = int)
+        self.D_f = np.array([self.n2idx[self.scenario[acid][2]] 
+                             for acid in self.scenario], dtype = int)
         # For each edge, its estimated travel time
         self.B_e = self.compute_edge_travel_times()
         # For each edge, the maximum flow
@@ -124,6 +125,9 @@ class Parameters:
         self.Dlt_y = self.compute_time_to_alt()
         # For each time step, its time window
         self.W_t = self.compute_time_windows()
+        
+        # Set of nodes without origin and destination for each aircraft
+        self.N_f = self.get_nodes_without_origin_destination()
         
     def compute_dep_time(self) -> np.ndarray:
         """Compute the departure time step in function of the time step.
@@ -200,3 +204,15 @@ class Parameters:
             max_time_window.append(self.T[-1])
         
         return [list(range(t, t_m)) for t,t_m in zip(self.T, max_time_window)]
+    
+    def get_nodes_without_origin_destination(self) -> np.ndarray:
+        new_nodes = np.empty((len(self.F), len(self.N)-2))
+        for f in self.F:
+            new_nodes[f] = self.N[
+                np.logical_and(
+                    np.logical_not(self.N == self.O_f[f]),
+                    np.logical_not(self.N == self.D_f[f])
+                )
+            ]
+        return new_nodes
+        
