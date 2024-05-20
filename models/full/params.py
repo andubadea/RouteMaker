@@ -2,6 +2,9 @@ import numpy as np
 import geopandas as gpd
 import osmnx as ox
 import networkx as nx
+import sys
+import numpy
+numpy.set_printoptions(threshold=sys.maxsize)
 
 class Parameters:
     def __init__(self, scenario:dict, G:nx.MultiDiGraph, nodes:gpd.GeoDataFrame, 
@@ -33,9 +36,9 @@ class Parameters:
                 The thickness of a flight layer [m]
             C (int | list): 
                 Edge capacity limit, either a single scalar or a list of length
-                len(G.edges), defined as vehicles within time window
+                len(G.edges), defined as vehicles within one time window.
             time_window (int): 
-                The number of time steps that create a flow time window
+                The number of seconds for each flow time window.
             v_cruise (float): 
                 Aircraft cruise speed [m/s]
             v_turn (float): 
@@ -55,19 +58,21 @@ class Parameters:
         self.G = G
         self.nodes = nodes
         self.edges = edges
-        self.time_horizon = time_horizon
         self.time_step = time_step
         self.fl_num = fl_num
         self.fl_size = fl_size
         self.C = C
-        self.time_window = time_window
-        self.v_cruise = v_cruise
-        self.v_turn = v_turn
-        self.v_up = v_up
-        self.v_down = v_down
         self.a_hoz = a_hoz
-        self.max_flight_time = max_flight_time
         self.overlap = overlap
+        
+        # Convert these directly in function of number of time steps
+        self.time_horizon = int(time_horizon/self.time_step)
+        self.time_window = int(time_window/self.time_step)
+        self.max_flight_time = int(max_flight_time/self.time_step)
+        self.v_cruise = v_cruise * self.time_step
+        self.v_turn = v_turn * self.time_step
+        self.v_up = v_up * self.time_step
+        self.v_down = v_down * self.time_step
         
         # Compute the parameters
         self.compute_params()
@@ -93,7 +98,7 @@ class Parameters:
         # Set of all flight levels
         self.Y = np.arange(self.fl_num, dtype = int)
         # Set of all time steps
-        self.T = np.arange(np.ceil(self.time_horizon/self.time_step), 
+        self.T = np.arange(np.ceil(self.time_horizon), 
                            dtype = int)
         # Departure time step for each flight
         self.Td_f = self.compute_dep_time()
@@ -134,15 +139,16 @@ class Parameters:
         using the existing self.Td_f.
         """
         # Get the max number of time steps per mission
-        arr_max_t = int(np.ceil(self.max_flight_time/self.time_step))
+        arr_max_t = int(np.ceil(self.max_flight_time))
         # Return array
-        return self.Td_f + arr_max_t
+        return np.clip(self.Td_f + arr_max_t, 0, 
+                       self.time_horizon-1).astype(int)
     
     def compute_edge_travel_times(self) -> np.ndarray:
         """Edge time depends on the cruise speed and the length of the edge.
         Is in function of time steps
         """
-        return np.ceil([self.edges.loc[e, 'length']/self.v_cruise/self.time_step
+        return np.ceil([self.edges.loc[e, 'length']/self.v_cruise
                          for e in self.edges.index]).astype(int)
         
     def compute_edge_flow_limit(self) -> np.ndarray:
@@ -179,12 +185,18 @@ class Parameters:
     def compute_time_to_alt(self) -> np.ndarray:
         """Time it takes to get to and from each altitude level.
         """
-        return np.array([self.fl_size * (i+1) / self.v_up + 
-                self.fl_size * (i+1) / self.v_down for i in range(self.fl_num)])
+        # Speed in function of time steps
+        return np.array([int(self.fl_size * (i+1) / self.v_up) + 
+                int(self.fl_size * (i+1) / self.v_down) 
+                for i in range(self.fl_num)])
         
     def compute_time_windows(self) -> np.ndarray:
         """The time step indices within each time window for each time step.
         """
         # This can later be updated to include overlap logic
-        return np.array([list(range(t, t+self.time_window))
-                         for t in self.T])
+        max_time_window = list(range(self.time_window, self.time_horizon+1))
+        # Add some time_horizon values at the end
+        while len(max_time_window) < len(self.T):
+            max_time_window.append(self.T[-1])
+        
+        return [list(range(t, t_m)) for t,t_m in zip(self.T, max_time_window)]

@@ -18,12 +18,10 @@ class ProblemGlobal:
     def createVars(self) -> None:
         pass
 
-
     def createObjectiveFunction(self) -> None:
         self.model.setObjective(1, gb.GRB.MINIMIZE) 
         pass
 
-    
     def createConstraints(self) -> None:
         pass
     
