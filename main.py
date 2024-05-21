@@ -1,7 +1,7 @@
 import geopandas as gpd
 import osmnx as ox
-from models.full.params import Parameters as FullParameters
-from models.full.problem import ProblemGlobal as FullProblem
+#from models.full.model import FullModel as Model
+from models.paths.model import PathModel as Model
 from data.parser import CityParser, parse_scenario
 
 city = CityParser('Vienna')
@@ -11,7 +11,7 @@ scenario = parse_scenario(city.scenarios[0])
 # Let's try to solve its
 
 # Test parameters
-test_params = FullParameters(
+model = Model(
     scenario,
     city.G,
     city.nodes,
@@ -28,10 +28,8 @@ test_params = FullParameters(
     v_down = 3,
     a_hoz = 3,
     max_flight_time=1800,
-    overlap=False
+    overlap=False,
+    name = 'test'
 )
-
-# Create the problem
-problem = FullProblem(test_params, 'Test')
 # Solve it
-print(problem.solve())
+#print(model.problem.solve())
