@@ -38,7 +38,7 @@ class ProblemGlobal:
         # Create one for origin node edges and times as well
         for f in self.p.F:
             for e in self.p.Down_n[self.p.O_f[f]]:
-                for t in self.p.Mt_f[f][0]:
+                for t in [self.p.Mt_f[f][0]]:
                     for y in self.p.Y:
                         tp = f,e,t,y
                         xorg.append(tp)
@@ -49,30 +49,27 @@ class ProblemGlobal:
         self.xorg_tup = gb.tuplelist(xorg)
         
         # Add the variables to gurobi
-        self.xp = self.model.addVar(self.xin_tup, 
+        self.xp = self.model.addVars(self.xin_tup, 
                                     vtype = GRB.BINARY, 
                                     name = 'xp')
         
-        self.xm = self.model.addVar(self.xout_tup, 
+        self.xm = self.model.addVars(self.xout_tup, 
                                     vtype = GRB.BINARY, 
                                     name = 'xm')
 
     def createObjectiveFunction(self) -> None:
-        self.model.setObjective(self.obj_function, gb.GRB.MINIMIZE) 
-    
-    def obj_function(self) -> float:
-        """Objective function.
-        """
-        obj = gb.quicksum(self.xp[f][e][t][y] * self.p.B_e[e] for f,e,t,y in 
-                          self.xin_tup) + \
-            gb.quicksum(self.xp[f][e][t][y] * self.p.Dlt_y[y] for f,e,t,y in 
-                        self.xorg_tup)
-        return obj
+        self.model.setObjective(
+            gb.quicksum(self.xp[f,e,t,y] * self.p.B_e[e]
+                for f,e,t,y in self.xin_tup) + \
+            gb.quicksum(self.xp[f,e,t,y] * self.p.Dlt_y[y] 
+                for f,e,t,y in self.xorg_tup), 
+            gb.GRB.MINIMIZE
+        ) 
 
     def createConstraints(self) -> None:
         # First of all, all aircraft are supposed to leave the origin and enter
         # the destination.
-        self.model.addConstrs((gb.quicksum(self.xp[f][e][t][y] 
+        self.model.addConstrs((gb.quicksum(self.xp[f,e,t,y] 
                                 for e in self.p.Down_n[self.p.O_f[f]]
                                 for y in self.p.Y 
                                 for t in [self.p.Mt_f[f][0]]
@@ -83,10 +80,10 @@ class ProblemGlobal:
                             name = 'origin'
         )
         
-        self.model.addConstrs((gb.quicksum(self.xp[f][e][t][y] 
+        self.model.addConstrs((gb.quicksum(self.xp[f,e,t,y] 
                                 for e in self.p.Down_n[self.p.O_f[f]]
                                 for y in self.p.Y 
-                                for t in self.p.Mt_f[f][0]
+                                for t in self.p.Mt_f[f]
                                 ) == 1 
                             # forall vars
                             for f in self.p.F
@@ -107,9 +104,9 @@ class ProblemGlobal:
         )
         
         # If an edge is existed, another downstream edge needs to be entered
-        self.model.addConstrs((gb.quicksum(self.xp[f][e][t][y]
+        self.model.addConstrs((gb.quicksum(self.xp[f,e,t,y]
                                 for e in self.p.Up_n[n]) ==
-                               gb.quicksum(self.xm[f][e][t][y]
+                               gb.quicksum(self.xm[f,e,t,y]
                                 for e in self.p.Down_n[n])
                             # forall vars
                             for f in self.p.F
@@ -121,7 +118,7 @@ class ProblemGlobal:
         )
         
         # Aircraft can only fly at one altitude for the whole flight
-        self.model.addConstrs((gb.quicksum(self.xp[f][e][t][y] 
+        self.model.addConstrs((gb.quicksum(self.xp[f,e,t,y] 
                                 for y in self.p.Y
                                 ) == 1
                             # forall vars
@@ -133,7 +130,7 @@ class ProblemGlobal:
         )
         
         # Finally, the flow constraint
-        self.model.addConstrs((gb.quicksum(self.xp[f][e][th][y]
+        self.model.addConstrs((gb.quicksum(self.xp[f,e,th,y]
                                 for f in self.p.F
                                 for th in self.p.W_t[t]
                                 ) <= self.p.C_e[e]

@@ -1,11 +1,6 @@
 import numpy as np
 import geopandas as gpd
-import osmnx as ox
 import networkx as nx
-import sys
-import numpy
-from copy import copy
-numpy.set_printoptions(threshold=sys.maxsize)
 
 class Parameters:
     def __init__(self, scenario:dict, G:nx.MultiDiGraph, nodes:gpd.GeoDataFrame, 

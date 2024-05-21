@@ -55,12 +55,13 @@ class CityParser():
         return [os.path.join(scendirname, x) for x in os.listdir(scendirname) 
                 if '.txt' in x]
         
-def parse_scenario(scenario_path:os.PathLike) -> dict:
+def parse_scenario(scenario_path:os.PathLike, num_ac:int = 0) -> dict:
     """Parses a scenario into a dictionary with each entry representing a flight.
     Each entry is of shape acid:[dep time, origin, destination].
 
     Args:
         scenario_path (os.PathLike): Path to scenario
+        num_ac (int): Number of aircraft to extract from scenario
 
     Returns:
         dict: Scenario dict.
@@ -68,10 +69,13 @@ def parse_scenario(scenario_path:os.PathLike) -> dict:
     # Open the scenario
     with open(scenario_path) as f:
         scen_lines = f.readlines()
+        
+    if num_ac == 0 or num_ac > len(scen_lines):
+        num_ac = len(scen_lines)
 
     # Create the dict
     scenario = {}
-    for line in scen_lines:
+    for line in scen_lines[:num_ac]:
         s = line.split(';')
         dep_time = int(s[2].split(':')[0]) * 3600 + int(s[2].split(':')[1]) * 60 +\
             int(s[2].split(':')[2])
