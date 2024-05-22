@@ -22,7 +22,6 @@ mp.set_start_method('fork')
 # For plotting
 colors = list(mcolors.CSS4_COLORS.keys())
 random.shuffle(colors)
-PLOT = False
 DEBUG = False
 
 # Path generation
@@ -60,7 +59,7 @@ class PathMaker():
                 cache file.
         """
         self.scen_name = scen_name
-        if PLOT or DEBUG:
+        if DEBUG:
             # We're in debug mode, take the first two aircraft
             self.scenario = {'D1':scenario['D1'], 
                              'D2':scenario['D2']}
@@ -97,7 +96,7 @@ class PathMaker():
         # Get the cache file name
         cache_path = os.path.join(dirname, f'cache/{self.scen_name}.pkl')
         # Check if there is an existing cache file
-        if not self.force_gen and os.path.exists(cache_path):
+        if not self.force_gen and os.path.exists(cache_path) and not DEBUG:
             # Load it
             with open(cache_path, 'rb') as f:
                 paths = pickle.load(f)
@@ -111,19 +110,27 @@ class PathMaker():
         
         print(f'Generating paths for {self.scen_name}.')
         # We generate the paths for each aircraft
-        # Create the input array of shape [[origin, dest, acid]...]
-        input_arr = []
-        for acid in self.scenario.keys():
-            input_arr.append([self.scenario[acid][1], 
-                                self.scenario[acid][2], 
-                                acid])
-        # Start the multiprocessing
-        with mp.Pool(self.num_cpus) as p:
-            results = list(tqdm.tqdm(p.imap(self.make_paths, 
-                                            input_arr), 
-                                            total=len(self.scenario)))
-        # Transform the list into a dict
-        paths = dict(results)
+        if DEBUG:
+            # Do single threaded to allow plots
+            paths = {}
+            for i, acid in enumerate(self.scenario.keys()):
+                print(f'ACID: {acid} | {i+1}/{len(self.scenario)}')
+                paths[acid] = self.make_paths(self.scenario[acid][1], 
+                                            self.scenario[acid][2])
+        else:
+            # Create the input array of shape [[origin, dest, acid]...]
+            input_arr = []
+            for acid in self.scenario.keys():
+                input_arr.append([self.scenario[acid][1], 
+                                    self.scenario[acid][2], 
+                                    acid])
+            # Start the multiprocessing
+            with mp.Pool(self.num_cpus) as p:
+                results = list(tqdm.tqdm(p.imap(self.make_paths, 
+                                                input_arr), 
+                                                total=len(self.scenario)))
+            # Transform the list into a dict
+            paths = dict(results)
         # We cache them
         with open(cache_path, 'wb') as f:
             pickle.dump(paths, f)
@@ -185,7 +192,7 @@ class PathMaker():
         sh_geom = linemerge([self.edges.loc[(u, v, 0), 'geometry'] 
                              for u, v in sh_edges])
 
-        if PLOT:
+        if DEBUG:
             # Get the graph plot
             fig, ax = ox.plot_graph(self.G, node_alpha=0, edge_color='grey', 
                                     bgcolor='white', show = False)
@@ -221,11 +228,11 @@ class PathMaker():
                     alt_geom = linemerge([self.edges.loc[(i, j, 0), 'geometry'] 
                                           for i, j in zip(alt_route[:-1], 
                                                           alt_route[1:])])
-                    if PLOT:
+                    if DEBUG:
                         ax.plot(alt_geom.xy[0], alt_geom.xy[1], 
                                 color = colors[colori], linewidth = 2)
                     colori += 1
-        if PLOT:
+        if DEBUG:
             ax.plot(sh_geom.xy[0], sh_geom.xy[1], color = 'red', linewidth = 5)
             plt.show()
         return alt_routes
@@ -258,7 +265,7 @@ class PathMaker():
         sh_geom = linemerge([self.edges.loc[(u, v, 0), 'geometry'] 
                              for u, v in sh_edges])
         
-        if PLOT:
+        if DEBUG:
             # Get the graph plot
             fig, ax = ox.plot_graph(self.G, node_alpha=0, edge_color='grey', 
                                     bgcolor='white', show = False)
@@ -289,7 +296,7 @@ class PathMaker():
         sh_poly = Polygon(zip(sh_poly_lon, sh_poly_lat))
 
         # Plot this polygon
-        if PLOT:
+        if DEBUG:
             ax.plot(sh_poly.exterior.coords.xy[0], 
                     sh_poly.exterior.coords.xy[1], color = 'orange', 
                     linewidth = 5)
@@ -353,7 +360,7 @@ class PathMaker():
                 continue
                 
             # Plot this path
-            if PLOT:
+            if DEBUG:
                 ax.plot(alt_geom.xy[0], alt_geom.xy[1], color = colors[colori], 
                         linewidth = 3)
             # Create the full node list and add it to the list of nodes
@@ -362,7 +369,7 @@ class PathMaker():
             attempts = 0
                 
         # Plot the shortest route
-        if PLOT:
+        if DEBUG:
             ax.plot(sh_geom.xy[0], sh_geom.xy[1], color = 'red', linewidth = 5)
             plt.show()
             
