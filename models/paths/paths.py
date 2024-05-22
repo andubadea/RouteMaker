@@ -1,23 +1,29 @@
+import os
+import tqdm
+import copy
+import random
+import pyproj
+import math
+import pickle
+import multiprocessing as mp
 import numpy as np
 import osmnx as ox
 import networkx as nx
 import geopandas as gpd
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
-import os
+
+from shapely import convex_hull
 from shapely.ops import linemerge, unary_union
 from shapely.geometry import LineString, Polygon, Point
-from shapely.plotting import plot_polygon
-import copy
-import random
-import pyproj
-import math
-import pickle
+
+mp.set_start_method('fork')
 
 # For plotting
 colors = list(mcolors.CSS4_COLORS.keys())
 random.shuffle(colors)
-PLOT = True
+PLOT = False
+DEBUG = False
 
 # Path generation
 PATH_SKIP = 2 # Higher means less paths
@@ -34,7 +40,8 @@ class PathMaker():
     """
     def __init__(self, scen_name:str, scenario:dict, G:nx.MultiDiGraph, 
                  nodes:gpd.GeoDataFrame, edges:gpd.GeoDataFrame, 
-                 seed:float = 42, force_gen:bool = False) -> None:
+                 num_cpus:int = 1, seed:float = 42, 
+                 force_gen:bool = False) -> None:
         """Class that creates alternative paths for one scenario.
         Args:
             scenario_name (str): 
@@ -53,7 +60,7 @@ class PathMaker():
                 cache file.
         """
         self.scen_name = scen_name
-        if PLOT:
+        if PLOT or DEBUG:
             # We're in debug mode, take the first two aircraft
             self.scenario = {'D1':scenario['D1'], 
                              'D2':scenario['D2']}
@@ -78,6 +85,9 @@ class PathMaker():
         
         # Get the rng
         self.rng = np.random.default_rng(seed)
+        
+        # Number of CPUs to use to generate paths
+        self.num_cpus = num_cpus
     
     def get_paths(self) -> dict:
         """If existing cache file exists, loads it. If not, creates the paths
@@ -101,19 +111,26 @@ class PathMaker():
         
         print(f'Generating paths for {self.scen_name}.')
         # We generate the paths for each aircraft
-        paths = {}
-        for i, acid in enumerate(self.scenario.keys()):
-            print(f'ACID: {acid} | {i+1}/{len(self.scenario)}')
-            paths[acid] = self.make_paths(self.scenario[acid][1], 
-                                          self.scenario[acid][2])
-        
+        # Create the input array of shape [[origin, dest, acid]...]
+        input_arr = []
+        for acid in self.scenario.keys():
+            input_arr.append([self.scenario[acid][1], 
+                                self.scenario[acid][2], 
+                                acid])
+        # Start the multiprocessing
+        with mp.Pool(self.num_cpus) as p:
+            results = list(tqdm.tqdm(p.imap(self.make_paths, 
+                                            input_arr), 
+                                            total=len(self.scenario)))
+        # Transform the list into a dict
+        paths = dict(results)
         # We cache them
         with open(cache_path, 'wb') as f:
             pickle.dump(paths, f)
             
         return paths
         
-    def make_paths(self, origin:int, destination:int) -> list:
+    def make_paths(self, args) -> list:
         """Generates the list of possible paths between the origin and
         destination nodes.
 
@@ -124,6 +141,8 @@ class PathMaker():
         Returns:
             list: List of possible paths
         """
+        # Unpack args
+        origin, destination, acid = args
         # Get the shortest path for convenience
         sh_path = ox.shortest_path(self.G, origin, destination, 
                                        weight = "length")
@@ -133,8 +152,7 @@ class PathMaker():
         # Add the random routes
         ac_paths = self.make_random_routes(origin, destination, N_RAND_PATHS,
                                             sh_path)
-        print(len(ac_paths))
-        return ac_paths
+        return [acid,ac_paths]
         
     def make_deterministic_paths(self, origin:int, destination:int, 
                                  sh_path:list = None) -> list:
@@ -264,7 +282,7 @@ class PathMaker():
                 b_factor = BUFFER_FACTOR * len(sh_lon_utm)/2/(len(sh_lon_utm)-i)**(0.75)
             # Make a point and buffer it in function of index and route length
             buffers.append(Point(lon,lat).buffer(sh_geom_utm.length/b_factor))
-        sh_poly_utm = unary_union(buffers)
+        sh_poly_utm = Polygon(convex_hull(unary_union(buffers)))
         sh_poly_lon, sh_poly_lat = self.utm2geo(
                                             sh_poly_utm.exterior.coords.xy[0], 
                                             sh_poly_utm.exterior.coords.xy[1])

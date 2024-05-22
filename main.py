@@ -12,10 +12,10 @@ scenario = parse_scenario(city.scenarios[0])
 
 # Test parameters
 model = Model(
-    scenario,
-    city.G,
-    city.nodes,
-    city.edges,
+    scenario=scenario,
+    G=city.G,
+    nodes=city.nodes,
+    edges=city.edges,
     time_horizon=7200,
     time_step=1,
     fl_num=10,
@@ -29,7 +29,8 @@ model = Model(
     a_hoz = 3,
     max_flight_time=1800,
     overlap=False,
-    name = 'test'
+    name = 'test',
+    num_cpus=4
 )
 # Solve it
 #print(model.problem.solve())

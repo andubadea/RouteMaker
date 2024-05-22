@@ -9,7 +9,7 @@ class Parameters:
                  fl_num:int, fl_size:float, C:int|list, time_window:int,
                  v_cruise: float, v_turn: float, v_up: float, v_down: float,
                  a_hoz: float, max_flight_time: float,
-                 overlap:bool = False) -> None:
+                 overlap:bool = False, num_cpus:int = 1) -> None:
         """Class that contains or calculates all problem parameters.
         Args:
             scenario (dict): 
@@ -50,6 +50,8 @@ class Parameters:
                 Maximum admissible flight time [s]
             overlap (bool, optional): 
                 Whether the flow time windows overlap. Defaults to False.
+            num_cpus (int, optional):
+                Number of CPUs to use to generate paths. Defaults to 1.
         """
         self.scenario = scenario
         self.G = G
@@ -72,7 +74,14 @@ class Parameters:
         self.v_down = v_down * self.time_step
         
         # Test the paths
-        self.path_maker = PathMaker('test', scenario, G, nodes, edges, 42, True)
+        self.path_maker = PathMaker(scen_name='test', 
+                                    scenario=scenario, 
+                                    G=G, 
+                                    nodes=nodes, 
+                                    edges=edges, 
+                                    seed=42, 
+                                    num_cpus=num_cpus,
+                                    force_gen=True)
         self.paths = self.path_maker.get_paths()
         
         # Compute the parameters
