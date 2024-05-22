@@ -92,12 +92,14 @@ class ProblemGlobal:
         )
         
         # If you enter an edge, you must also exit it
-        self.model.addConstrs((self.xp[f][e][t][y] == 
-                                self.xm[f][e][t+self.p.B_e[e]][y]
+        self.model.addConstrs((self.xp[f,e,t,y] == 
+                                self.xm[f,e,t+self.p.B_e[e],y]
                             # forall vars
                             for f in self.p.F
                             for e in self.p.E
-                            for t in self.p.Mt_f[f]
+                            # Cannot go past time window
+                            for t in [x for x in self.p.Mt_f[f] 
+                                      if x <= (max(self.p.Mt_f[f])-self.p.B_e[e])]
                             for y in self.p.Y
                             ),
                             name = 'edgeflow'

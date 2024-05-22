@@ -5,8 +5,8 @@ import geopandas as gpd
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import os
-from shapely.ops import linemerge
-from shapely.geometry import LineString, Polygon
+from shapely.ops import linemerge, unary_union
+from shapely.geometry import LineString, Polygon, Point
 from shapely.plotting import plot_polygon
 import copy
 import random
@@ -20,11 +20,13 @@ random.shuffle(colors)
 PLOT = True
 
 # Path generation
-PATH_SKIP = 5 # Higher means less paths
+PATH_SKIP = 2 # Higher means less paths
 N_RAND_PATHS = 5 # Number of random paths to generate
-BUFFER_FACTOR = 2 # Higher means random path subgraph is smaller
+BUFFER_FACTOR = 1.5 # Higher means random path subgraph is smaller
 PATH_ATTEMPTS = 50 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
+# Length limit for random routes in function of shortest route length
+PATH_LENGTH_FACTOR = 1.5
 
 class PathMaker():
     """Module to make alternative paths for each aircraft in a scenario.
@@ -127,10 +129,11 @@ class PathMaker():
                                        weight = "length")
         
         # Create the deterministic paths
-        ac_paths = self.make_deterministic_paths(origin, destination,sh_path)
+        #ac_paths = self.make_deterministic_paths(origin, destination,sh_path)
         # Add the random routes
-        ac_paths += self.make_random_routes(origin, destination, N_RAND_PATHS,
+        ac_paths = self.make_random_routes(origin, destination, N_RAND_PATHS,
                                             sh_path)
+        print(len(ac_paths))
         return ac_paths
         
     def make_deterministic_paths(self, origin:int, destination:int, 
@@ -172,10 +175,10 @@ class PathMaker():
         # Now let's generate some alternative paths
         alt_routes = []
         colori = 0
-        # The number of parts we need to divide the path into. Make it a set
-        # to avoid duplicates.
-        n_groups = set([int(len(sh_path)/(x+1)) for x in range(0, len(sh_path), 
-                                                           PATH_SKIP)])
+        # The number of parts we need to divide the path into. We go for powers
+        # of two, and also include the case with one edge per group.
+        n_groups = [2**x for x in range(int(np.log2(len(sh_edges))))] \
+                    + [len(sh_edges)]
         for n in n_groups:
             # Divide list of edges into equal parts
             print(f'Dividing into {n} parts.')
@@ -246,16 +249,31 @@ class PathMaker():
         sh_lon_utm, sh_lat_utm = self.geo2utm(sh_geom.xy[0], sh_geom.xy[1])
         sh_geom_utm = LineString(zip(sh_lon_utm, sh_lat_utm))
         
-        sh_poly_utm = sh_geom_utm.buffer(sh_geom_utm.length/BUFFER_FACTOR)
+        # Buffer method
+        # Just buffer the line
+        #sh_poly_utm = sh_geom_utm.buffer(sh_geom_utm.length/BUFFER_FACTOR)
+        
+        # Weighted buffer method
+        # Create the buffer such that its extent is greatest in the middle of
+        # the route.
+        buffers = []
+        for i, lon, lat in zip(range(len(sh_lon_utm)),sh_lon_utm, sh_lat_utm):
+            if i < len(sh_lon_utm)/2:
+                b_factor = BUFFER_FACTOR * len(sh_lon_utm)/2/(i+1)**(0.75)
+            else:
+                b_factor = BUFFER_FACTOR * len(sh_lon_utm)/2/(len(sh_lon_utm)-i)**(0.75)
+            # Make a point and buffer it in function of index and route length
+            buffers.append(Point(lon,lat).buffer(sh_geom_utm.length/b_factor))
+        sh_poly_utm = unary_union(buffers)
         sh_poly_lon, sh_poly_lat = self.utm2geo(
-                                            sh_poly_utm.boundary.coords.xy[0], 
-                                            sh_poly_utm.boundary.coords.xy[1])
+                                            sh_poly_utm.exterior.coords.xy[0], 
+                                            sh_poly_utm.exterior.coords.xy[1])
         sh_poly = Polygon(zip(sh_poly_lon, sh_poly_lat))
 
         # Plot this polygon
         if PLOT:
-            ax.plot(sh_poly.boundary.coords.xy[0], 
-                    sh_poly.boundary.coords.xy[1], color = 'orange', 
+            ax.plot(sh_poly.exterior.coords.xy[0], 
+                    sh_poly.exterior.coords.xy[1], color = 'orange', 
                     linewidth = 5)
 
         # Get the nodes within this polygon
@@ -268,13 +286,11 @@ class PathMaker():
         ac_paths = []
         colori = 0
         while attempts < PATH_ATTEMPTS and len(ac_paths) < n_paths:
-            print(len(ac_paths), attempts)
             chosen_nodes = self.rng.choice(list(sh_G.nodes.keys()), N_RAND_NODES, 
                                            replace = True)
             
             # We want these nodes to not be somewhere in the shortest path
             if any([node in sh_path for node in chosen_nodes]):
-                print('One node already in sh')
                 # Try again
                 attempts+=1
                 continue
@@ -284,7 +300,6 @@ class PathMaker():
             node_paths = [ox.shortest_path(sh_G, origin, node, 
                                     weight='length') for node in chosen_nodes]
             if any([x is None for x in node_paths]):
-                print('One node is unreachable from destination')
                 # Try again
                 attempts+=1
                 continue
@@ -310,6 +325,14 @@ class PathMaker():
             
             # Extract the path and the geometry
             alt_path, alt_geom = int_path
+            
+            # Check the length requirement
+            alt_length = sum([self.edges.loc[(i,j,0), 'length'] 
+                                for i,j in zip(alt_path[:-1], alt_path[1:])])
+            if alt_length > sh_geom_utm.length * PATH_LENGTH_FACTOR:
+                # Try again
+                attempts+=1
+                continue
                 
             # Plot this path
             if PLOT:
@@ -348,7 +371,6 @@ class PathMaker():
             small_path = ox.shortest_path(G, node1, node2,weight='length')
             if small_path is None:
                 # Can't create path
-                print('One node unreachable')
                 return None
             # Otherwise add these nodes to the path
             path += small_path[1:]
@@ -359,7 +381,6 @@ class PathMaker():
         
         if not line.is_simple:
             # Line is self intersecting
-            print('Line is self-intersecting')
             return None
         
         return path, line
