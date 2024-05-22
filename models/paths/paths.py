@@ -32,45 +32,30 @@ PATH_ATTEMPTS = 50 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
 # Length limit for random routes in function of shortest route length
 PATH_LENGTH_FACTOR = 1.5
+TURN_ANGLE = 25
 
 class PathMaker():
     """Module to make alternative paths for each aircraft in a scenario.
     Class instance is specific to one scenario.
     """
-    def __init__(self, scen_name:str, scenario:dict, G:nx.MultiDiGraph, 
-                 nodes:gpd.GeoDataFrame, edges:gpd.GeoDataFrame, 
-                 num_cpus:int = 1, seed:float = 42, 
-                 force_gen:bool = False) -> None:
-        """Class that creates alternative paths for one scenario.
-        Args:
-            scenario_name (str): 
-                The name of the scenario, will be used to generate the cache
-                for this scenario, and load it if it exists
-            scenario (dict): 
-                The scenario dictionary, created by the parser.
-            G (nx.MultiDiGraph): The street graph.
-            nodes (gpd.GeoDataFrame): The nodes in the graph.
-            edges (gpd.GeoDataFrame): The edges in the graph.
-            seed (float, optional): 
-                The seed for the random number generator. Defaults to 42.
-            force_gen (bool, optional):
-                Whether to force the generation of alternative paths regardless
-                of whether a cache already exists. Overwrites the existing 
-                cache file.
+    def __init__(self, p) -> None:
+        """Class that creates alternative paths for each aircraft in one 
+        scenario.
         """
-        self.scen_name = scen_name
+        self.scen_name = p.scen_name
+
         if DEBUG:
             # We're in debug mode, take the first two aircraft
-            self.scenario = {'D1':scenario['D1'], 
-                             'D2':scenario['D2']}
+            self.scenario = {'D1':p.scenario['D1'], 
+                             'D2':p.scenario['D2']}
         else:
-            self.scenario = scenario
+            self.scenario = p.scenario
             
-        self.force_gen = force_gen
+        self.force_path_gen = p.force_path_gen
         # Store the graph information
-        self.G = G
-        self.nodes = nodes
-        self.edges = edges
+        self.G = p.G
+        self.nodes = p.nodes
+        self.edges = p.edges
         
         # Create the coordinate transformers
         city_centre = self.nodes.dissolve().centroid
@@ -83,10 +68,18 @@ class PathMaker():
                                                    always_xy = True).transform
         
         # Get the rng
-        self.rng = np.random.default_rng(seed)
+        self.rng = np.random.default_rng(p.seed)
         
         # Number of CPUs to use to generate paths
-        self.num_cpus = num_cpus
+        self.num_cpus = p.num_cpus
+        
+        # Vehicle properties
+        self.v_cruise = p.v_cruise
+        self.v_turn = p.v_turn
+        self.yaw_r = p.yaw_r
+        self.a_hoz = p.a_hoz
+        self.t_dcel = (self.v_cruise - self.v_turn) / self.a_hoz
+        self.d_dcel = (self.v_cruise**2 - self.v_turn**2) / (2*self.a_hoz)
     
     def get_paths(self) -> dict:
         """If existing cache file exists, loads it. If not, creates the paths
@@ -96,7 +89,7 @@ class PathMaker():
         # Get the cache file name
         cache_path = os.path.join(dirname, f'cache/{self.scen_name}.pkl')
         # Check if there is an existing cache file
-        if not self.force_gen and os.path.exists(cache_path) and not DEBUG:
+        if not self.force_path_gen and os.path.exists(cache_path) and not DEBUG:
             # Load it
             with open(cache_path, 'rb') as f:
                 paths = pickle.load(f)
@@ -115,8 +108,9 @@ class PathMaker():
             paths = {}
             for i, acid in enumerate(self.scenario.keys()):
                 print(f'ACID: {acid} | {i+1}/{len(self.scenario)}')
-                paths[acid] = self.make_paths(self.scenario[acid][1], 
-                                            self.scenario[acid][2])
+                paths[acid] = self.make_paths([self.scenario[acid][1], 
+                                            self.scenario[acid][2],
+                                            acid])
         else:
             # Create the input array of shape [[origin, dest, acid]...]
             input_arr = []
@@ -159,7 +153,9 @@ class PathMaker():
         # Add the random routes
         ac_paths = self.make_random_routes(origin, destination, N_RAND_PATHS,
                                             sh_path)
-        return [acid,ac_paths]
+        # Create the complete path dictionary by adding time at each edge.
+        ac_paths_dict = self.create_path_dict(acid, ac_paths)
+        return [acid,ac_paths_dict]
         
     def make_deterministic_paths(self, origin:int, destination:int, 
                                  sh_path:list = None) -> list:
@@ -409,7 +405,117 @@ class PathMaker():
             return None
         
         return path, line
+    
+    def create_path_dict(self, acid:str, ac_paths:list) -> list:
+        """Creates the path dictionary for an aircraft.
+
+        Args:
+            acid (str): Aircraft ID
+            ac_paths (list): List of paths in nodes.
+
+        Returns:
+            List: 
+                List of lists corresponding to the ac_paths list of lists with
+                the estimated time at each node for each path.
+        """
+        path_times = [self.calc_path_times(acid, path) for path in ac_paths]
+        return {'paths':ac_paths, 'times':path_times}
+            
         
+    def calc_path_times(self, acid:str, path:list) -> list:
+        """Calculates the time at which an aircraft will be at each node
+        of this path.
+
+        Args:
+            acid (str): Aircraft ID
+            path (list): List of nodes.
+
+        Returns:
+            list: List of times for each node.
+        """
+        # Get the aircraft departure time
+        dep_time = self.scenario[acid][0]
+        # Initialise the times list with the departure time
+        timestamps = [dep_time]
+        # Get the path geometry and the indices within it of the nodes
+        node_coord_idx = [0] # First node will of course have idx 0
+        edge_geoms = []
+        for u,v in zip(path[:-1], path[1:]):
+            edge_line = self.edges.loc[(u,v,0), 'geometry']
+            node_coord_idx.append(node_coord_idx[-1] + len(edge_line.xy[0])-1)
+            edge_geoms.append(edge_line)
+            
+        path_geom = linemerge(edge_geoms)
+        prev_turn = False
+        # Now find the idx's of the turns in the geometry
+        for i in range(1, len(path_geom.coords)-1):
+            lon_prev, lat_prev = path_geom.coords[i-1]
+            lon_next, lat_next = path_geom.coords[i+1]
+            lon, lat = path_geom.coords[i]
+            # Get the angle and distance
+            a1, d1=self.kwikqdrdist(lat_prev,lon_prev,lat,lon)
+            a2, d2=self.kwikqdrdist(lat,lon,lat_next,lon_next)
+            angle=abs(a2-a1)
+
+            if angle>180:
+                angle=360-angle
+                
+            # This is a turn if angle is greater than 25
+            if angle < 25:
+                # This isn't a turn, but did we have a turn before?
+                if prev_turn:
+                    # Then we must account for the time to accelerate
+                    d1 -= self.d_dcel
+                    if d1 < 0:
+                        d1 = 0 # We never accelerated enough then
+                    timestamps.append(timestamps[-1] + d1/self.v_cruise 
+                                      + self.t_dcel)
+                else:
+                    timestamps.append(timestamps[-1] + d1/self.v_cruise)
+                prev_turn = False
+                
+            else:
+                # This is a turn, was the previous also a turn?
+                if prev_turn:
+                    # Account for double turn
+                    d1 -= self.d_dcel * 2
+                    if d1 < 0:
+                        d1 = 0
+                    timestamps.append(timestamps[-1] + d1/self.v_cruise 
+                                      + 2 * self.t_dcel)
+                else:
+                    # Only account for one turn
+                    d1 -= self.d_dcel
+                    if d1 < 0:
+                        d1 = 0 # We never accelerated enough then
+                    timestamps.append(timestamps[-1] + d1/self.v_cruise 
+                                      + self.t_dcel)
+                prev_turn = True
+
+            if i == len(path_geom.coords)-1:
+                # Also add the destination time
+                if prev_turn:
+                    d2 -= self.d_dcel
+                    if d2 < 0:
+                        d2 = 0 # We never accelerated enough then
+                    timestamps.append(timestamps[-1] + d2/self.v_cruise 
+                                      + self.t_dcel)
+                else:
+                    timestamps.append(timestamps[-1] + d2/self.v_cruise)
+        return timestamps
+    
+    @staticmethod
+    def kwikqdrdist(lata: float, lona: float, latb: float, lonb: float)-> float:
+        """Gives quick and dirty qdr[deg] and dist [m]
+        from lat/lon. (note: does not work well close to poles)"""
+        re      = 6371000.  # radius earth [m]
+        dlat    = np.radians(latb - lata)
+        dlon    = np.radians(((lonb - lona)+180)%360-180)
+        cavelat = np.cos(np.radians(lata + latb) * 0.5)
+        qdr     = np.degrees(np.arctan2(dlon * cavelat, dlat)) % 360
+        dangle  = np.sqrt(dlat * dlat + dlon * dlon * cavelat * cavelat)
+        dist    = re * dangle
+        return qdr, dist
         
     @staticmethod
     def split(a:list, n:int) -> list:

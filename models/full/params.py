@@ -93,9 +93,6 @@ class Parameters:
         self.E = np.arange(len(self.edges), dtype = int)
         # Set of all flight levels
         self.Y = np.arange(self.fl_num, dtype = int)
-        # Set of all time steps
-        self.T = np.arange(np.ceil(self.time_horizon), 
-                           dtype = int)
         # Departure time step for each flight
         self.Td_f = self.compute_dep_time()
         # Latest arrival time for each flight
@@ -121,9 +118,11 @@ class Parameters:
         self.Mtext_f = self.compute_extended_allowed_time()
         # For each flight level, the time it takes ascend and descend
         self.Dlt_y = self.compute_time_to_alt()
+        # Set of all time steps, ensure it covers everything
+        self.T = np.arange(np.max(self.Ta_f) + np.max(self.B_e) + 10,
+                           dtype = int)
         # For each time step, its time window
         self.W_t = self.compute_time_windows()
-        
         # Set of nodes without origin and destination for each aircraft
         self.N_f = self.get_nodes_without_origin_destination()
         

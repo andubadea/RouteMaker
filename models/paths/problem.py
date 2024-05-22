@@ -3,10 +3,10 @@ from gurobipy import GRB
 from .params import Parameters
 
 class ProblemGlobal:
-    def __init__(self, parameters:Parameters, name:str = 'problem') -> None:
+    def __init__(self, parameters:Parameters) -> None:
         self.p = parameters
         
-        self.model = gb.Model(name)
+        self.model = gb.Model(self.p.scen_name)
         self.createVars()
         self.model.update
         self.createObjectiveFunction()
