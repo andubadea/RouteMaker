@@ -116,6 +116,9 @@ class Parameters:
         self.Down_n = self.get_downstream_edges()
         # The set of relevant time steps for each flight
         self.Mt_f = self.compute_mission_allowed_time()
+        # We also need an extended version by taking into account the longest
+        # edge travel time
+        self.Mtext_f = self.compute_extended_allowed_time()
         # For each flight level, the time it takes ascend and descend
         self.Dlt_y = self.compute_time_to_alt()
         # For each time step, its time window
@@ -180,6 +183,13 @@ class Parameters:
         step.
         """
         return [list(range(td, ta+1)) for td,ta in zip(self.Td_f, self.Ta_f)]
+    
+    def compute_extended_allowed_time(self) -> list:
+        """The relevant time steps for each aircraft in function of the time
+        step.
+        """
+        return [list(range(td, ta+np.max(self.B_e)+1)) for td,ta in 
+                                                    zip(self.Td_f, self.Ta_f)]
 
     def compute_time_to_alt(self) -> np.ndarray:
         """Time it takes to get to and from each altitude level.

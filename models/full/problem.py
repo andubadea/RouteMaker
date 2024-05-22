@@ -29,7 +29,7 @@ class ProblemGlobal:
         for f in self.p.F:
             for e in self.p.E:
                 # Only allowed times for flight
-                for t in self.p.Mt_f[f]:
+                for t in self.p.Mtext_f[f]:
                     for y in self.p.Y:
                         tp = f,e,t,y
                         xin_fety.append(tp)
@@ -98,8 +98,7 @@ class ProblemGlobal:
                             for f in self.p.F
                             for e in self.p.E
                             # Cannot go past time window
-                            for t in [x for x in self.p.Mt_f[f] 
-                                      if x <= (max(self.p.Mt_f[f])-self.p.B_e[e])]
+                            for t in self.p.Mt_f[f]
                             for y in self.p.Y
                             ),
                             name = 'edgeflow'
