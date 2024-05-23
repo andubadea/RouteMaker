@@ -9,7 +9,6 @@ import multiprocessing as mp
 import numpy as np
 import osmnx as ox
 import networkx as nx
-import geopandas as gpd
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 
@@ -162,7 +161,7 @@ class PathMaker():
         
         # Create the complete path dictionary by adding time at each edge.
         ac_paths_dict = self.create_path_dict(acid, ac_paths)
-        return [acid,ac_paths_dict]
+        return ac_paths_dict
         
     def make_deterministic_paths(self, origin:int, destination:int, 
                                  sh_path:list = None) -> list:
@@ -427,7 +426,7 @@ class PathMaker():
         
         return path, line
     
-    def create_path_dict(self, acid:str, ac_paths:list) -> list:
+    def create_path_dict(self, acid:str, ac_paths:list) -> dict:
         """Creates the path dictionary for an aircraft.
 
         Args:

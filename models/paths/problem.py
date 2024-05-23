@@ -18,126 +18,50 @@ class ProblemGlobal:
         return self.model.Status == gb.GRB.OPTIMAL
     
     def createVars(self) -> None:
-        """There are two decision variables:
-        xin_f_e_t_y - Whether aircraft f enters edge e at time t and altitude y
-        xout_f_e_t_y - Whether aircraft f exits edge e at time t and altitude y
+        """There is one decision variable:
+        z_fky - Whether flight f will use path k at altitude y
         """
-        # Create the two variables
-        xin_fety = []
-        xout_fety = []
-        xorg = []
+        # Create the variable
+        self.z_fky = []
         for f in self.p.F:
-            for e in self.p.E:
-                # Only allowed times for flight
-                for t in self.p.Mt_f[f]:
-                    for y in self.p.Y:
-                        tp = f,e,t,y
-                        xin_fety.append(tp)
-                        xout_fety.append(tp)
-                        
-        # Create one for origin node edges and times as well
-        for f in self.p.F:
-            for e in self.p.Down_n[self.p.O_f[f]]:
-                for t in [self.p.Mt_f[f][0]]:
-                    for y in self.p.Y:
-                        tp = f,e,t,y
-                        xorg.append(tp)
-                        
-        
-        self.xin_tup = gb.tuplelist(xin_fety)
-        self.xout_tup = gb.tuplelist(xout_fety)
-        self.xorg_tup = gb.tuplelist(xorg)
+            for k in self.p.K_f[f]:
+                for y in self.p.Y:
+                    tp = f,k,y
+                    self.z_fky.append(tp)
         
         # Add the variables to gurobi
-        self.xp = self.model.addVars(self.xin_tup, 
+        self.z = self.model.addVars(self.z_fky, 
                                     vtype = GRB.BINARY, 
-                                    name = 'xp')
-        
-        self.xm = self.model.addVars(self.xout_tup, 
-                                    vtype = GRB.BINARY, 
-                                    name = 'xm')
+                                    name = 'z')
 
     def createObjectiveFunction(self) -> None:
         self.model.setObjective(
-            gb.quicksum(self.xp[f,e,t,y] * self.p.B_e[e]
-                for f,e,t,y in self.xin_tup) + \
-            gb.quicksum(self.xp[f,e,t,y] * self.p.Dlt_y[y] 
-                for f,e,t,y in self.xorg_tup), 
-            gb.GRB.MINIMIZE
-        ) 
+            gb.quicksum(self.z[f,k,y] * (self.p.B_k[f][k] + self.p.Dlt_y[y])
+                for f,k,y in self.z), gb.GRB.MINIMIZE) 
 
     def createConstraints(self) -> None:
-        # First of all, all aircraft are supposed to leave the origin and enter
-        # the destination.
-        self.model.addConstrs((gb.quicksum(self.xp[f,e,t,y] 
-                                for e in self.p.Down_n[self.p.O_f[f]]
+        # First of all, one and only one altitude and route combination can be
+        # allocated per flight.
+        self.model.addConstrs((gb.quicksum(self.z[f,k,y] 
+                                for k in self.p.K_f[f]
                                 for y in self.p.Y 
-                                for t in [self.p.Mt_f[f][0]]
                                 ) == 1 
                             # forall vars
                             for f in self.p.F
                             ),
-                            name = 'origin'
+                            name = 'one_path_alt'
         )
         
-        self.model.addConstrs((gb.quicksum(self.xp[f,e,t,y] 
-                                for e in self.p.Down_n[self.p.O_f[f]]
-                                for y in self.p.Y 
-                                for t in self.p.Mt_f[f]
-                                ) == 1 
-                            # forall vars
-                            for f in self.p.F
-                            ),
-                            name = 'destination'
-        )
-        
-        # If you enter an edge, you must also exit it
-        self.model.addConstrs((self.xp[f][e][t][y] == 
-                                self.xm[f][e][t+self.p.B_e[e]][y]
-                            # forall vars
-                            for f in self.p.F
-                            for e in self.p.E
-                            for t in self.p.Mt_f[f]
-                            for y in self.p.Y
-                            ),
-                            name = 'edgeflow'
-        )
-        
-        # If an edge is existed, another downstream edge needs to be entered
-        self.model.addConstrs((gb.quicksum(self.xp[f,e,t,y]
-                                for e in self.p.Up_n[n]) ==
-                               gb.quicksum(self.xm[f,e,t,y]
-                                for e in self.p.Down_n[n])
-                            # forall vars
-                            for f in self.p.F
-                            for n in self.p.N_t
-                            for t in self.p.Mt_f[f]
-                            for y in self.p.Y
-                            ),
-                            name = 'nodeflow'
-        )
-        
-        # Aircraft can only fly at one altitude for the whole flight
-        self.model.addConstrs((gb.quicksum(self.xp[f,e,t,y] 
-                                for y in self.p.Y
-                                ) == 1
-                            # forall vars
-                            for f in self.p.F
-                            for e in self.p.E
-                            for t in self.p.Mt_f[f]
-                            ),
-                            name = 'onealt'
-        )
-        
-        # Finally, the flow constraint
-        self.model.addConstrs((gb.quicksum(self.xp[f,e,th,y]
+        # Flow capacity constraint
+        self.model.addConstrs((gb.quicksum(
+                            self.p.x_fket[f,k,e,tw] * self.z[f,k,y]
                                 for f in self.p.F
-                                for th in self.p.W_t[t]
+                                for k in self.p.K_f[f]
                                 ) <= self.p.C_e[e]
                             # forall vars
                             for e in self.p.E
-                            for t in self.p.T
                             for y in self.p.Y
+                            for tw in self.p.W_t
                             ),
                             name = 'flowcapacity'
         )

@@ -1,7 +1,4 @@
-import networkx as nx
-import geopandas as gpd
 from .params import Parameters
-from .problem import ProblemGlobal
 
 class PathModel:
     def __init__(self, **kwargs) -> None:

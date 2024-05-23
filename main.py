@@ -1,5 +1,3 @@
-import geopandas as gpd
-import osmnx as ox
 #from models.full.model import FullModel as Model
 from models.paths.model import PathModel as Model
 from data.parser import CityParser, parse_scenario
@@ -18,7 +16,7 @@ model = Model(scenario=scenario,
     fl_num=10,
     fl_size=20,
     C=2,
-    time_window=600,
+    time_window=60,
     v_cruise=15,
     v_turn=5,
     v_up=5,
@@ -27,10 +25,10 @@ model = Model(scenario=scenario,
     yaw_r=55,
     max_flight_time=1800,
     overlap=True,
-    scen_name='test',
+    scen_name='test2',
     num_cpus=8,
     seed=42,
-    force_path_gen = False
+    force_path_gen = True
     )
 
 # Solve it
