@@ -14,7 +14,7 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 
 from shapely import convex_hull
-from shapely.ops import linemerge, unary_union
+from shapely.ops import linemerge, unary_union, split
 from shapely.geometry import LineString, Polygon, Point
 
 mp.set_start_method('fork')
@@ -22,16 +22,17 @@ mp.set_start_method('fork')
 # For plotting
 colors = list(mcolors.CSS4_COLORS.keys())
 random.shuffle(colors)
-DEBUG = False
+DEBUG = True
 
 # Path generation
-PATH_SKIP = 2 # Higher means less paths
-N_RAND_PATHS = 5 # Number of random paths to generate
+N_RAND_PATHS = 2 # Number of random paths to generate
+N_PATHS = 10 # Number of non-random paths to generate
 BUFFER_FACTOR = 1.5 # Higher means random path subgraph is smaller
 PATH_ATTEMPTS = 50 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
 # Length limit for random routes in function of shortest route length
-PATH_LENGTH_FACTOR = 1.5
+PATH_LENGTH_FACTOR = 2
+PATH_SIMILARITY_FACTOR = 0.9
 TURN_ANGLE = 25
 
 class PathMaker():
@@ -149,10 +150,16 @@ class PathMaker():
                                        weight = "length")
         
         # Create the deterministic paths
-        #ac_paths = self.make_deterministic_paths(origin, destination,sh_path)
-        # Add the random routes
-        ac_paths = self.make_random_routes(origin, destination, N_RAND_PATHS,
+        ac_paths = self.make_deterministic_paths(origin, destination,sh_path)
+        if len(ac_paths) > (N_PATHS - N_RAND_PATHS):
+            # Take the first N_PATHS routes
+            ac_paths = ac_paths[:(N_PATHS - N_RAND_PATHS)]
+
+        # Add some random routes up to N_PATHS
+        ac_paths += self.make_random_routes(origin, destination, 
+                                            N_PATHS - len(ac_paths), 
                                             sh_path)
+        
         # Create the complete path dictionary by adding time at each edge.
         ac_paths_dict = self.create_path_dict(acid, ac_paths)
         return [acid,ac_paths_dict]
@@ -194,18 +201,23 @@ class PathMaker():
                                     bgcolor='white', show = False)
 
         # Now let's generate some alternative paths
-        alt_routes = []
+        alt_routes = [sh_path]
         colori = 0
         # The number of parts we need to divide the path into. We go for powers
         # of two, and also include the case with one edge per group.
         n_groups = [2**x for x in range(int(np.log2(len(sh_edges))))] \
                     + [len(sh_edges)]
         for n in n_groups:
+            # Stop earlier if we have enough routes
+            if len(alt_routes) >= N_PATHS - N_RAND_PATHS:
+                break
             # Divide list of edges into equal parts
-            print(f'Dividing into {n} parts.')
             parts = self.split(sh_edges, n)
             # We go part by part and set the weight of each element of the part to a large value
             for part in parts:
+                # Stop earlier if we have enough routes
+                if len(alt_routes) >= N_PATHS - N_RAND_PATHS:
+                    break
                 # Let's set the length of this guy to a lot
                 G_local = copy.deepcopy(self.G)
                 for u,v in part:
@@ -217,17 +229,25 @@ class PathMaker():
                 # Is this route already in alternative routes?
                 if alt_route in alt_routes:
                     continue
-                else:
-                    # Append it
-                    alt_routes.append(alt_route)
-                    # Plot it
-                    alt_geom = linemerge([self.edges.loc[(i, j, 0), 'geometry'] 
-                                          for i, j in zip(alt_route[:-1], 
-                                                          alt_route[1:])])
-                    if DEBUG:
-                        ax.plot(alt_geom.xy[0], alt_geom.xy[1], 
-                                color = colors[colori], linewidth = 2)
-                    colori += 1
+                
+                # Check how similar it is compared to the shortest path
+                similarity = sum([node in sh_path 
+                                  for node in alt_route]) / len(alt_route)
+                
+                if similarity > PATH_SIMILARITY_FACTOR:
+                    # Skip this route
+                    continue
+                
+                # Append it
+                alt_routes.append(alt_route)
+                # Plot it
+                alt_geom = linemerge([self.edges.loc[(i, j, 0), 'geometry'] 
+                                        for i, j in zip(alt_route[:-1], 
+                                                        alt_route[1:])])
+                if DEBUG:
+                    ax.plot(alt_geom.xy[0], alt_geom.xy[1], 
+                            color = colors[colori], linewidth = 2)
+                colori += 1
         if DEBUG:
             ax.plot(sh_geom.xy[0], sh_geom.xy[1], color = 'red', linewidth = 5)
             plt.show()
@@ -270,10 +290,6 @@ class PathMaker():
         sh_lon_utm, sh_lat_utm = self.geo2utm(sh_geom.xy[0], sh_geom.xy[1])
         sh_geom_utm = LineString(zip(sh_lon_utm, sh_lat_utm))
         
-        # Buffer method
-        # Just buffer the line
-        #sh_poly_utm = sh_geom_utm.buffer(sh_geom_utm.length/BUFFER_FACTOR)
-        
         # Weighted buffer method
         # Create the buffer such that its extent is greatest in the middle of
         # the route.
@@ -301,16 +317,21 @@ class PathMaker():
         sh_poly_nodes = self.nodes[self.nodes.intersects(sh_poly)].index
         # Create the subgraph
         sh_G = self.G.subgraph(sh_poly_nodes)
+        # Within the subgraph, increase the weights of the edges of the shortest
+        # path to discourage their use.
+        for u,v in sh_edges:
+            # Make these edges undesirable
+            sh_G.edges[u,v,0]['length'] *= 3
 
         # The loop
         attempts = 0
         ac_paths = []
         colori = 0
         while attempts < PATH_ATTEMPTS and len(ac_paths) < n_paths:
-            chosen_nodes = self.rng.choice(list(sh_G.nodes.keys()), N_RAND_NODES, 
-                                           replace = True)
+            chosen_nodes = self.rng.choice(list(sh_G.nodes.keys()), 
+                                           N_RAND_NODES)
             
-            # We want these nodes to not be somewhere in the shortest path
+            # We want these nodes to not be in the shortest path
             if any([node in sh_path for node in chosen_nodes]):
                 # Try again
                 attempts+=1
@@ -542,3 +563,25 @@ class PathMaker():
             return epsg_code
         epsg_code = '327' + utm_band
         return epsg_code
+    
+    @staticmethod
+    def perpendicular_line(line:LineString, length:float) -> LineString:
+        """Creates a linestring perpendicular to another line.
+
+        Args:
+            line (LineString): Original line.
+            length (float): Length of the new perpendicular line.
+
+        Returns:
+            LineString: Perpendicular line.
+        """
+        left = line.offset_curve(length / 2)
+        right = line.offset_curve(-length / 2)
+        c = left.boundary.geoms[1]
+        d = right.boundary.geoms[0]
+        print(line)
+        print(left)
+        print(right)
+        print(c)
+        print(d)
+        return LineString([c, d])
