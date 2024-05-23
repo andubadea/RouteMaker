@@ -25,11 +25,11 @@ model = Model(scenario=scenario,
     yaw_r=55,
     max_flight_time=1800,
     overlap=True,
-    scen_name='test2',
-    num_cpus=8,
+    scen_name='test',
+    num_cpus=40,
     seed=42,
     force_path_gen = True
     )
 
 # Solve it
-#print(model.problem.solve())
+print(model.problem.solve())
