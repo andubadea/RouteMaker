@@ -21,7 +21,7 @@ mp.set_start_method('fork')
 # For plotting
 colors = list(mcolors.CSS4_COLORS.keys())
 random.shuffle(colors)
-DEBUG = True
+DEBUG = False
 
 # Path generation
 N_RAND_PATHS = 2 # Number of random paths to generate
@@ -101,9 +101,9 @@ class PathMaker():
             else:
                 print('Cache file incomplete, forcing path generation.')
         
-        print(f'Generating paths for {self.scen_name}.')
         # We generate the paths for each aircraft
-        if DEBUG:
+        if DEBUG or self.num_cpus == 1:
+            print(f'Generating paths for {self.scen_name}.')
             # Do single threaded to allow plots
             paths = {}
             for i, acid in enumerate(self.scenario.keys()):
