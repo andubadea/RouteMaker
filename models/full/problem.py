@@ -111,7 +111,7 @@ class ProblemGlobal:
                                 for e in self.p.Down_n[n])
                             # forall vars
                             for f in self.p.F
-                            for n in self.p.N_t
+                            for n in self.p.N_f
                             for t in self.p.Mt_f[f]
                             for y in self.p.Y
                             ),

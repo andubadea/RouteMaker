@@ -1,74 +1,23 @@
 import numpy as np
-import geopandas as gpd
-import networkx as nx
 
 class Parameters:
-    def __init__(self, scenario:dict, G:nx.MultiDiGraph, nodes:gpd.GeoDataFrame, 
-                 edges:gpd.GeoDataFrame, time_horizon:int, time_step:float, 
-                 fl_num:int, fl_size:float, C:int|list, time_window:int,
-                 v_cruise: float, v_turn: float, v_up: float, v_down: float,
-                 a_hoz: float, max_flight_time: float,
-                 overlap:bool = False) -> None:
-        """Class that contains or calculates all problem parameters.
+    def __init__(self, kwargs:dict) -> None:
+        """Contains the model parameters for one scenario.
+
         Args:
-            scenario (dict): 
-                A dictionary of the scenario, with each entry representing a 
-                flight. Key is ACID, data is [dep time, origin, destination],
-                dep time in seconds, origin and destination using the same id 
-                as the nodes GDF
-            G (nx.MultiDiGraph): 
-                City street graph
-            nodes (gpd.GeoDataFrame): 
-                GDF of nodes
-            edges (gpd.GeoDataFrame): 
-                GDF of edges
-            time_horizon (int): 
-                The time horizon [s]
-            time_step (float): 
-                The time increment [s]
-            fl_num (int): 
-                Number of flight levels
-            fl_size (float): 
-                The thickness of a flight layer [m]
-            C (int | list): 
-                Edge capacity limit, either a single scalar or a list of length
-                len(G.edges), defined as vehicles within one time window.
-            time_window (int): 
-                The number of seconds for each flow time window.
-            v_cruise (float): 
-                Aircraft cruise speed [m/s]
-            v_turn (float): 
-                Aircraft cruise speed [m/s]
-            v_up (float): 
-                Aircraft ascent speed [m/s]
-            v_down (float): 
-                Aircraft descent speed [m/s]
-            a_hoz (float): 
-                Aircraft horizontal acceleration [m/s2]
-            max_flight_time (float):
-                Maximum admissible flight time [s]
-            overlap (bool, optional): 
-                Whether the flow time windows overlap. Defaults to False.
+            kwargs (dict): Inputs dictionary
         """
-        self.scenario = scenario
-        self.G = G
-        self.nodes = nodes
-        self.edges = edges
-        self.time_step = time_step
-        self.fl_num = fl_num
-        self.fl_size = fl_size
-        self.C = C
-        self.a_hoz = a_hoz
-        self.overlap = overlap
+        # Store the inputs as class variables.
+        self.__dict__.update(kwargs)
         
-        # Convert these directly in function of number of time steps
-        self.time_horizon = int(time_horizon/self.time_step)
-        self.time_window = int(time_window/self.time_step)
-        self.max_flight_time = int(max_flight_time/self.time_step)
-        self.v_cruise = v_cruise * self.time_step
-        self.v_turn = v_turn * self.time_step
-        self.v_up = v_up * self.time_step
-        self.v_down = v_down * self.time_step
+        # Recompute these in function of number of time steps
+        self.time_horizon = int(self.time_horizon/self.time_step)
+        self.time_window = int(self.time_window/self.time_step)
+        self.max_flight_time = int(self.max_flight_time/self.time_step)
+        self.v_cruise = self.v_cruise * self.time_step
+        self.v_turn = self.v_turn * self.time_step
+        self.v_up = self.v_up * self.time_step
+        self.v_down = self.v_down * self.time_step
         
         # Compute the parameters
         self.compute_params()
