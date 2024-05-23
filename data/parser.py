@@ -10,6 +10,7 @@ class CityParser():
     def __init__(self, city) -> None:
         self.G, self.nodes, self.edges = self.load_city(city)
         self.scenarios = self.get_scenario_list(city)
+        self.scenario_names = self.get_scenario_names(city)
     
     def load_city(self, city:str) -> Tuple[nx.MultiDiGraph, 
                                         gpd.GeoDataFrame, gpd.GeoDataFrame]:
@@ -53,6 +54,14 @@ class CityParser():
         dirname = os.path.dirname(__file__)
         scendirname = os.path.join(dirname, f'cities/{city}/scenarios')
         return [os.path.join(scendirname, x) for x in os.listdir(scendirname) 
+                if '.txt' in x]
+        
+    def get_scenario_names(self, city:str) -> list:
+        """Returns the names of the files in the scenario folder.
+        """
+        dirname = os.path.dirname(__file__)
+        scendirname = os.path.join(dirname, f'cities/{city}/scenarios')
+        return [x.replace('.txt','') for x in os.listdir(scendirname) 
                 if '.txt' in x]
         
 def parse_scenario(scenario_path:os.PathLike, num_ac:int = 0) -> dict:

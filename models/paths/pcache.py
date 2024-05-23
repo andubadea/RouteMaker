@@ -16,6 +16,7 @@ from shapely import convex_hull
 from shapely.ops import linemerge, unary_union, split
 from shapely.geometry import LineString, Polygon, Point
 
+
 # For plotting
 colors = list(mcolors.CSS4_COLORS.keys())
 random.shuffle(colors)
@@ -32,29 +33,14 @@ PATH_LENGTH_FACTOR = 2
 PATH_SIMILARITY_FACTOR = 0.9
 TURN_ANGLE = 25
 
-class PathMaker():
-    """Module to make alternative paths for each aircraft in a scenario.
-    Class instance is specific to one scenario.
+class PathCacheMaker:
+    """Makes the path for all scenarios in one go.
     """
-    def __init__(self, p) -> None:
+    def __init__(self, **kwargs) -> None:
         """Class that creates alternative paths for each aircraft in one 
         scenario.
         """
-        self.scen_name = p.scen_name
-
-        if DEBUG:
-            # We're in debug mode, take the first two aircraft
-            self.scenario = {'D1':p.scenario['D1'], 
-                             'D2':p.scenario['D2']}
-        else:
-            self.scenario = p.scenario
-            
-        self.force_path_gen = p.force_path_gen
-        # Store the graph information
-        self.G = p.G
-        self.nodes = p.nodes
-        self.edges = p.edges
-        
+        self.__dict__.update(kwargs)
         # Create the coordinate transformers
         city_centre = self.nodes.dissolve().centroid
         utm_crs = self.convert_wgs_to_utm(city_centre.x[0], city_centre.y[0])
@@ -66,69 +52,43 @@ class PathMaker():
                                                    always_xy = True).transform
         
         # Get the rng
-        self.rng = np.random.default_rng(p.seed)
-        
-        # Number of CPUs to use to generate paths
-        self.num_cpus = p.num_cpus
+        self.rng = np.random.default_rng(self.seed)
         
         # Vehicle properties
-        self.v_cruise = p.v_cruise
-        self.v_turn = p.v_turn
-        self.yaw_r = p.yaw_r
-        self.a_hoz = p.a_hoz
         self.t_dcel = (self.v_cruise - self.v_turn) / self.a_hoz
         self.d_dcel = (self.v_cruise**2 - self.v_turn**2) / (2*self.a_hoz)
     
-    def get_paths(self) -> dict:
-        """If existing cache file exists, loads it. If not, creates the paths
-        and saves them, then returns the path dict of form acid:list of paths.
+    def create_cache(self, scenarios:list) -> None:
+        """Create the caches for all the scenarios in the list. The scenario
+        list must be of form [[scenario dict, name]...]
         """
+        with mp.Pool(self.num_cpus) as p:
+            _ = list(tqdm.tqdm(p.imap(self.get_paths, scenarios), 
+                                                total=len(scenarios)))
+        return
+        
+        
+    def get_paths(self, args) -> None:
+        """Create the paths for one scenario.
+        """
+        scenario,name = args
         dirname = os.path.dirname(__file__)
         # Get the cache file name
-        cache_path = os.path.join(dirname, f'cache/{self.scen_name}.pkl')
-        # Check if there is an existing cache file
-        if not self.force_path_gen and os.path.exists(cache_path) and not DEBUG:
-            # Load it
-            with open(cache_path, 'rb') as f:
-                paths = pickle.load(f)
-            # Simple check to see if this dictionary is complete. Otherwise, 
-            # it will proceed with the path generation.
-            if len(self.scenario) == len(paths):
-                # return
-                return paths
-            else:
-                print(paths)
-                print('Cache file incomplete, forcing path generation.')
+        cache_path = os.path.join(dirname, f'cache/{name}.pkl')
         
         # We generate the paths for each aircraft
-        if DEBUG or self.num_cpus == 1:
-            print(f'Generating paths for {self.scen_name}.')
-            # Do single threaded to allow plots
-            paths = {}
-            for i, acid in enumerate(self.scenario.keys()):
-                print(f'ACID: {acid} | {i+1}/{len(self.scenario)}')
-                paths[acid] = self.make_paths([self.scenario[acid][1], 
-                                            self.scenario[acid][2],
-                                            acid])
-        else:
-            # Create the input array of shape [[origin, dest, acid]...]
-            input_arr = []
-            for acid in self.scenario.keys():
-                input_arr.append([self.scenario[acid][1], 
-                                    self.scenario[acid][2], 
-                                    acid])
-            # Start the multiprocessing
-            with mp.Pool(self.num_cpus) as p:
-                results = list(tqdm.tqdm(p.imap(self.make_paths, 
-                                                input_arr), 
-                                                total=len(self.scenario)))
-            # Transform the list into a dict
-            paths = dict(results)
+        paths = {}
+        for i, acid in enumerate(scenario.keys()):
+            #print(f'ACID: {acid} | {i+1}/{len(scenario)}')
+            paths[acid] = self.make_paths([scenario[acid][1], 
+                                        scenario[acid][2],
+                                        scenario[acid][0]])
+            
         # We cache them
         with open(cache_path, 'wb') as f:
             pickle.dump(paths, f)
             
-        return paths
+        return
         
     def make_paths(self, args) -> list:
         """Generates the list of possible paths between the origin and
@@ -142,7 +102,7 @@ class PathMaker():
             list: List of possible paths
         """
         # Unpack args
-        origin, destination, acid = args
+        origin, destination, dep_time = args
         # Get the shortest path for convenience
         sh_path = ox.shortest_path(self.G, origin, destination, 
                                        weight = "length")
@@ -159,7 +119,7 @@ class PathMaker():
                                             sh_path)
         
         # Create the complete path dictionary by adding time at each edge.
-        ac_paths_dict = self.create_path_dict(acid, ac_paths)
+        ac_paths_dict = self.create_path_dict(ac_paths, dep_time)
         return ac_paths_dict
         
     def make_deterministic_paths(self, origin:int, destination:int, 
@@ -189,18 +149,9 @@ class PathMaker():
             
         # Get the edges in the path
         sh_edges = list(zip(sh_path[:-1], sh_path[1:]))
-        # Get the geometry in the path
-        sh_geom = linemerge([self.edges.loc[(u, v, 0), 'geometry'] 
-                             for u, v in sh_edges])
-
-        if DEBUG:
-            # Get the graph plot
-            fig, ax = ox.plot_graph(self.G, node_alpha=0, edge_color='grey', 
-                                    bgcolor='white', show = False)
 
         # Now let's generate some alternative paths
         alt_routes = [sh_path]
-        colori = 0
         # The number of parts we need to divide the path into. We go for powers
         # of two, and also include the case with one edge per group.
         n_groups = [2**x for x in range(int(np.log2(len(sh_edges))))] \
@@ -238,17 +189,6 @@ class PathMaker():
                 
                 # Append it
                 alt_routes.append(alt_route)
-                # Plot it
-                alt_geom = linemerge([self.edges.loc[(i, j, 0), 'geometry'] 
-                                        for i, j in zip(alt_route[:-1], 
-                                                        alt_route[1:])])
-                if DEBUG:
-                    ax.plot(alt_geom.xy[0], alt_geom.xy[1], 
-                            color = colors[colori], linewidth = 2)
-                colori += 1
-        if DEBUG:
-            ax.plot(sh_geom.xy[0], sh_geom.xy[1], color = 'red', linewidth = 5)
-            plt.show()
         return alt_routes
     
     def make_random_routes(self, origin:int, destination:int, n_paths:int, 
@@ -278,11 +218,6 @@ class PathMaker():
         # Get the geometry in the path
         sh_geom = linemerge([self.edges.loc[(u, v, 0), 'geometry'] 
                              for u, v in sh_edges])
-        
-        if DEBUG:
-            # Get the graph plot
-            fig, ax = ox.plot_graph(self.G, node_alpha=0, edge_color='grey', 
-                                    bgcolor='white', show = False)
 
         # Get a subgraph based on a polygon buffer around the shortest path.
         sh_lon_utm, sh_lat_utm = self.geo2utm(sh_geom.xy[0], sh_geom.xy[1])
@@ -305,12 +240,6 @@ class PathMaker():
                                             sh_poly_utm.exterior.coords.xy[1])
         sh_poly = Polygon(zip(sh_poly_lon, sh_poly_lat))
 
-        # Plot this polygon
-        if DEBUG:
-            ax.plot(sh_poly.exterior.coords.xy[0], 
-                    sh_poly.exterior.coords.xy[1], color = 'orange', 
-                    linewidth = 5)
-
         # Get the nodes within this polygon
         sh_poly_nodes = self.nodes[self.nodes.intersects(sh_poly)].index
         # Create the subgraph
@@ -324,7 +253,6 @@ class PathMaker():
         # The loop
         attempts = 0
         ac_paths = []
-        colori = 0
         while attempts < PATH_ATTEMPTS and len(ac_paths) < n_paths:
             chosen_nodes = self.rng.choice(list(sh_G.nodes.keys()), 
                                            N_RAND_NODES)
@@ -374,19 +302,9 @@ class PathMaker():
                 attempts+=1
                 continue
                 
-            # Plot this path
-            if DEBUG:
-                ax.plot(alt_geom.xy[0], alt_geom.xy[1], color = colors[colori], 
-                        linewidth = 3)
             # Create the full node list and add it to the list of nodes
             ac_paths.append(alt_path)
-            colori += 1
             attempts = 0
-                
-        # Plot the shortest route
-        if DEBUG:
-            ax.plot(sh_geom.xy[0], sh_geom.xy[1], color = 'red', linewidth = 5)
-            plt.show()
             
         return ac_paths
     
@@ -425,7 +343,7 @@ class PathMaker():
         
         return path, line
     
-    def create_path_dict(self, acid:str, ac_paths:list) -> dict:
+    def create_path_dict(self, ac_paths:list, dep_time:float) -> dict:
         """Creates the path dictionary for an aircraft.
 
         Args:
@@ -437,11 +355,11 @@ class PathMaker():
                 List of lists corresponding to the ac_paths list of lists with
                 the estimated time at each node for each path.
         """
-        path_times = [self.calc_path_times(acid, path) for path in ac_paths]
+        path_times = [self.calc_path_times(path, dep_time) for path in ac_paths]
         return {'paths':ac_paths, 'times':path_times}
             
         
-    def calc_path_times(self, acid:str, path:list) -> list:
+    def calc_path_times(self, path:list, dep_time:float) -> list:
         """Calculates the time at which an aircraft will be at each node
         of this path.
 
@@ -452,8 +370,6 @@ class PathMaker():
         Returns:
             list: List of times for each node.
         """
-        # Get the aircraft departure time
-        dep_time = self.scenario[acid][0]
         # Initialise the times list with the departure time
         timestamps = [dep_time]
         # Get the path geometry and the indices within it of the nodes
