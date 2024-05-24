@@ -79,7 +79,6 @@ class PathCacheMaker:
         # We generate the paths for each aircraft
         paths = {}
         for i, acid in enumerate(scenario.keys()):
-            #print(f'ACID: {acid} | {i+1}/{len(scenario)}')
             paths[acid] = self.make_paths([scenario[acid][1], 
                                         scenario[acid][2],
                                         scenario[acid][0]])

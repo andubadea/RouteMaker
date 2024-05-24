@@ -20,10 +20,12 @@ from shapely.geometry import LineString, Polygon, Point
 colors = list(mcolors.CSS4_COLORS.keys())
 random.shuffle(colors)
 DEBUG = False
+PLOT = False
+PLOT_ALL = True
 
 # Path generation
-N_RAND_PATHS = 2 # Number of random paths to generate
-N_PATHS = 10 # Number of non-random paths to generate
+N_RAND_PATHS = 0 # Number of random paths to generate
+N_PATHS = 2 # Number of non-random paths to generate
 BUFFER_FACTOR = 1.5 # Higher means random path subgraph is smaller
 PATH_ATTEMPTS = 50 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
@@ -97,7 +99,6 @@ class PathMaker():
                 # return
                 return paths
             else:
-                print(paths)
                 print('Cache file incomplete, forcing path generation.')
         
         # We generate the paths for each aircraft
@@ -127,6 +128,21 @@ class PathMaker():
         # We cache them
         with open(cache_path, 'wb') as f:
             pickle.dump(paths, f)
+            
+        if PLOT_ALL:
+            # Plot all the shortest paths
+            fig, ax = ox.plot_graph(self.G, node_alpha=0, edge_color='grey', 
+                                    bgcolor='white', show = False)
+            for acid in paths.keys():
+                sh_path = paths[acid]['paths'][0]
+                sh_edges = list(zip(sh_path[:-1], sh_path[1:]))
+                sh_geom = linemerge([self.edges.loc[(u, v, 0), 'geometry'] 
+                                    for u, v in sh_edges])
+                ax.plot(sh_geom.xy[0], sh_geom.xy[1], label = acid,
+                        linewidth = 5)
+            plt.legend()
+            plt.show()
+
             
         return paths
         
@@ -193,7 +209,7 @@ class PathMaker():
         sh_geom = linemerge([self.edges.loc[(u, v, 0), 'geometry'] 
                              for u, v in sh_edges])
 
-        if DEBUG:
+        if DEBUG or PLOT:
             # Get the graph plot
             fig, ax = ox.plot_graph(self.G, node_alpha=0, edge_color='grey', 
                                     bgcolor='white', show = False)
@@ -242,11 +258,11 @@ class PathMaker():
                 alt_geom = linemerge([self.edges.loc[(i, j, 0), 'geometry'] 
                                         for i, j in zip(alt_route[:-1], 
                                                         alt_route[1:])])
-                if DEBUG:
+                if DEBUG or PLOT:
                     ax.plot(alt_geom.xy[0], alt_geom.xy[1], 
                             color = colors[colori], linewidth = 2)
                 colori += 1
-        if DEBUG:
+        if DEBUG or PLOT:
             ax.plot(sh_geom.xy[0], sh_geom.xy[1], color = 'red', linewidth = 5)
             plt.show()
         return alt_routes
@@ -279,7 +295,7 @@ class PathMaker():
         sh_geom = linemerge([self.edges.loc[(u, v, 0), 'geometry'] 
                              for u, v in sh_edges])
         
-        if DEBUG:
+        if DEBUG or PLOT:
             # Get the graph plot
             fig, ax = ox.plot_graph(self.G, node_alpha=0, edge_color='grey', 
                                     bgcolor='white', show = False)
@@ -306,7 +322,7 @@ class PathMaker():
         sh_poly = Polygon(zip(sh_poly_lon, sh_poly_lat))
 
         # Plot this polygon
-        if DEBUG:
+        if DEBUG or PLOT:
             ax.plot(sh_poly.exterior.coords.xy[0], 
                     sh_poly.exterior.coords.xy[1], color = 'orange', 
                     linewidth = 5)
@@ -375,7 +391,7 @@ class PathMaker():
                 continue
                 
             # Plot this path
-            if DEBUG:
+            if DEBUG or PLOT:
                 ax.plot(alt_geom.xy[0], alt_geom.xy[1], color = colors[colori], 
                         linewidth = 3)
             # Create the full node list and add it to the list of nodes
@@ -384,7 +400,7 @@ class PathMaker():
             attempts = 0
                 
         # Plot the shortest route
-        if DEBUG:
+        if DEBUG or PLOT:
             ax.plot(sh_geom.xy[0], sh_geom.xy[1], color = 'red', linewidth = 5)
             plt.show()
             

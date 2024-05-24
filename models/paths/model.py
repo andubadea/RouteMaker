@@ -1,4 +1,5 @@
 from .params import Parameters
+from .problem import ProblemGlobal
 
 class PathModel:
     def __init__(self, **kwargs) -> None:
@@ -59,12 +60,15 @@ class PathModel:
                 to 42.
         """
         # Create the parameter instance
+        print('--- Initialising parameters.')
         self.params = Parameters(kwargs)
         
         # Create the problem
-        # self.problem = ProblemGlobal(self.params)
+        print('--- Creating problem.')
+        self.problem = ProblemGlobal(self.params)
         
     def solve(self):
         # Solve the problem, and then save
+        print('--- Solving problem.')
         self.problem.solve()
         self.problem.model.write(f'{self.params.scen_name}.sol')

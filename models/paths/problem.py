@@ -7,6 +7,7 @@ class ProblemGlobal:
         self.p = parameters
         
         self.model = gb.Model(self.p.scen_name)
+        self.model.setParam('Threads', 8)
         self.createVars()
         self.model.update
         self.createObjectiveFunction()
@@ -36,7 +37,7 @@ class ProblemGlobal:
 
     def createObjectiveFunction(self) -> None:
         self.model.setObjective(
-            gb.quicksum(self.z[f,k,y] * (self.p.B_k[f][k] + self.p.Dlt_y[y])
+            gb.quicksum(self.z[f,k,y] * (self.p.B_fk[f][k] + self.p.Dlt_y[y])
                 for f,k,y in self.z), gb.GRB.MINIMIZE) 
 
     def createConstraints(self) -> None:
@@ -51,17 +52,17 @@ class ProblemGlobal:
                             ),
                             name = 'one_path_alt'
         )
-        
+                
         # Flow capacity constraint
         self.model.addConstrs((gb.quicksum(
-                            self.p.x_fket[f,k,e,tw] * self.z[f,k,y]
+                                self.p.xp_fket[f,k,e,tw] * self.z[f,k,y]
                                 for f in self.p.F
                                 for k in self.p.K_f[f]
-                                ) <= self.p.C_e[e]
+                                ) <= self.p.C_e
                             # forall vars
                             for e in self.p.E
                             for y in self.p.Y
-                            for tw in self.p.W_t
+                            for tw in range(len(self.p.W_t))
                             ),
                             name = 'flowcapacity'
         )

@@ -17,13 +17,7 @@ class Parameters:
         self.compute_params()
         
     def compute_params(self) -> None:
-        # First of all, dictionaries that link the index of the edges and nodes
-        # to the actual indices of the edges and nodes
-        self.idx2e = list(self.edges.index)
-        self.e2idx = dict(zip(list(self.edges.index), range(len(self.edges))))
-        self.idx2n = list(self.nodes.index)
-        self.n2idx = dict(zip(list(self.nodes.index), range(len(self.nodes))))
-        # Another dictionary that links the aircraft ID to the index of the set
+        # Dictionary that links the aircraft ID to the index of the set
         self.acid2idx = dict(zip(self.scenario.keys(),
                                  range(len(self.scenario))))
         self.idx2acid = list(self.scenario.keys())
@@ -36,11 +30,11 @@ class Parameters:
         # Set of all flights
         self.F = np.arange(len(self.scenario), dtype = int)
         # Set of all edges
-        self.E = np.arange(len(self.edges), dtype = int)
+        self.E, self.idx2e, self.e2idx = self.compute_high_degree_edges()
         # Set of all flight levels
         self.Y = np.arange(self.fl_num, dtype = int)
-        # For each edge, the maximum flow
-        self.C_e = self.compute_edge_flow_limit()
+        # The maximum flow
+        self.C_e = self.C
         # For each flight level, the time it takes ascend and descend
         self.Dlt_y = self.compute_time_to_alt()
         # Set of all time windows
@@ -48,13 +42,37 @@ class Parameters:
         
         # Process the paths to get the set of all paths for each flight f, the
         # travel time of each path for each flight f, and the binary variable
-        # that shows whether flight f is on edge e at time t
-        self.K_f, self.B_fk, self.xp_fket = self.process_paths(self.path_dict)
+        # that shows whether flight f is on edge e at time t. Also update the
+        # edges so they only contain the ones we actually use.
+        self.K_f, self.B_fk, self.xp_fket, self.W_t \
+                        = self.process_paths(self.path_dict)
+        
+    def compute_high_degree_edges(self) -> np.ndarray:
+        """For this problem, we only care about the flow along edges that have
+        nodes of degree 3 or higher. Basically, if the nodes of the edge only
+        connect to one two other nodes, they are of degree 2, so the flow will
+        automatically be enforced.
+
+        Returns:
+            np.ndarray: List of edges
+        """
+        node_deg = self.G.degree()
+        idx2e = []
+        e2idx = {}
+        for u,v,_ in self.edges.index:
+            # Check the degrees of nodes u and v
+            if node_deg[u] > 2 or node_deg[v] > 2:
+                # This edge counts
+                idx2e.append((u,v,0))
+                e2idx[(u,v,0)] = len(idx2e)-1
+        return np.arange(len(idx2e)), idx2e, e2idx
+        
         
     def compute_edge_flow_limit(self) -> np.ndarray:
         """The flow limit for each edge.
         """
-        return np.array([self.C]*len(self.edges))
+        return np.array([self.C * self.time_window/60]*len(self.edges)
+                        ).astype(int)
 
     def compute_time_to_alt(self) -> np.ndarray:
         """Time it takes to get to and from each altitude level.
@@ -104,6 +122,7 @@ class Parameters:
         
         # Path_dict is of shape {acid:{paths,times}}
         # iterate over all flight idxs
+        max_tw = 0
         for acidx in self.F:
             # Get the aircraft acid
             acid = self.idx2acid[acidx]
@@ -118,8 +137,12 @@ class Parameters:
             for path_idx, path in enumerate(paths):
                 for path_edge_idx, edge in enumerate(zip(path[:-1], path[1:])):
                     u,v = edge
-                    # Get the global edge idx
-                    edge_idx = self.e2idx[(u,v,0)]
+                    # Get the global edge idx only if we care about that edge
+                    if (u,v,0) in self.e2idx.keys():
+                        edge_idx = self.e2idx[(u,v,0)]
+                    else:
+                        # We skip this edge
+                        continue
                     # Get the equivalent time for this edge
                     edge_time = path_times[path_idx][path_edge_idx]
                     # Get the list of time window indices in which we can find
@@ -141,13 +164,13 @@ class Parameters:
                     # Set the equivalent xp values to 1
                     for t in t_idx:
                         xp_fket[acidx][path_idx][edge_idx][t] = 1
-                
+                    # Set the maximum time window
+                    if t_idx_int > max_tw:
+                        max_tw = t_idx_int
                 # Add the path time
                 flight_times.append(path_times[path_idx][-1]-path_times[path_idx][0])
             
             #B_f_k wants flight times per path
             B_fk.append(flight_times)
-            if acidx == 1:
-                break
-        return K_f, B_fk, xp_fket
+        return K_f, B_fk, xp_fket, np.arange(max_tw+1)
             
