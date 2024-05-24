@@ -1,7 +1,7 @@
 # Unimportant files
 data/help/*
 *.sol
-models/paths/cache/*.pkl
+models/paths/cache/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
