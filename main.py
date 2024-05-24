@@ -7,7 +7,7 @@ import multiprocessing as mp
 mp.set_start_method('fork')
 
 city = CityParser('Vienna')
-scenario = parse_scenario(city.scenarios[0])
+scenario = parse_scenario(city.scenarios[0], 10800)
 #small_scenario = dict([[acid, scenario[acid]] 
 #                       for acid in list(scenario.keys())[:10]])
 
@@ -51,7 +51,7 @@ model = Model(scenario=scenario,
     max_flight_time=1800,
     overlap=True,
     scen_name='test',
-    num_cpus=40,
+    num_cpus=16,
     seed=42,
     force_path_gen = True
     )

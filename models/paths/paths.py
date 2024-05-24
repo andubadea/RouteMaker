@@ -11,6 +11,7 @@ import osmnx as ox
 import networkx as nx
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+import time
 
 from shapely import convex_hull
 from shapely.ops import linemerge, unary_union, split
@@ -21,18 +22,19 @@ colors = list(mcolors.CSS4_COLORS.keys())
 random.shuffle(colors)
 DEBUG = False
 PLOT = False
-PLOT_ALL = True
+PLOT_ALL = False
 
 # Path generation
-N_RAND_PATHS = 0 # Number of random paths to generate
-N_PATHS = 2 # Number of non-random paths to generate
+N_PATHS = 5 # Number of non-random paths to generate
+N_RAND_PATHS = 1 # Number of random paths to generate
 BUFFER_FACTOR = 1.5 # Higher means random path subgraph is smaller
-PATH_ATTEMPTS = 50 # Higher means more attempts per random path
+PATH_ATTEMPTS = 10 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
 # Length limit for random routes in function of shortest route length
 PATH_LENGTH_FACTOR = 2
 PATH_SIMILARITY_FACTOR = 0.9
 TURN_ANGLE = 25
+n_groups = [1,2,4]
 
 class PathMaker():
     """Module to make alternative paths for each aircraft in a scenario.
@@ -110,7 +112,7 @@ class PathMaker():
                 print(f'ACID: {acid} | {i+1}/{len(self.scenario)}')
                 paths[acid] = self.make_paths([self.scenario[acid][1], 
                                             self.scenario[acid][2],
-                                            acid])
+                                            acid])[1]
         else:
             # Create the input array of shape [[origin, dest, acid]...]
             input_arr = []
@@ -120,11 +122,11 @@ class PathMaker():
                                     acid])
             # Start the multiprocessing
             with mp.Pool(self.num_cpus) as p:
-                results = list(tqdm.tqdm(p.imap(self.make_paths, 
-                                                input_arr), 
-                                                total=len(self.scenario)))
+                results = list(tqdm.tqdm(p.imap(self.make_paths, input_arr), 
+                                    total=len(input_arr)))
             # Transform the list into a dict
             paths = dict(results)
+        print(paths)
         # We cache them
         with open(cache_path, 'wb') as f:
             pickle.dump(paths, f)
@@ -142,8 +144,6 @@ class PathMaker():
                         linewidth = 5)
             plt.legend()
             plt.show()
-
-            
         return paths
         
     def make_paths(self, args) -> list:
@@ -165,18 +165,28 @@ class PathMaker():
         
         # Create the deterministic paths
         ac_paths = self.make_deterministic_paths(origin, destination,sh_path)
-        if len(ac_paths) > (N_PATHS - N_RAND_PATHS):
-            # Take the first N_PATHS routes
-            ac_paths = ac_paths[:(N_PATHS - N_RAND_PATHS)]
+        
+        if len(ac_paths) < N_PATHS - N_RAND_PATHS:
+            # We came short of the target, compensate with random paths
+            n_rands = N_RAND_PATHS + (N_PATHS - N_RAND_PATHS - len(ac_paths))
+        else:
+            n_rands = N_RAND_PATHS
 
-        # Add some random routes up to N_PATHS
+        # Create random paths
         ac_paths += self.make_random_routes(origin, destination, 
-                                            N_PATHS - len(ac_paths), 
-                                            sh_path)
+                                            n_rands, sh_path)
+        
+        if len(ac_paths) > (N_PATHS):
+            # We overshot, take the required number of paths
+            ac_paths = ac_paths[:N_PATHS]
+        elif len(ac_paths) < (N_PATHS):
+            print(f'Missing paths: {N_PATHS - len(ac_paths)}')
+            # Add the shortest path a few more times and done
+            ac_paths += [ac_paths[0]]*(N_PATHS-len(ac_paths))
         
         # Create the complete path dictionary by adding time at each edge.
         ac_paths_dict = self.create_path_dict(acid, ac_paths)
-        return ac_paths_dict
+        return (acid, ac_paths_dict)
         
     def make_deterministic_paths(self, origin:int, destination:int, 
                                  sh_path:list = None) -> list:
@@ -205,22 +215,15 @@ class PathMaker():
             
         # Get the edges in the path
         sh_edges = list(zip(sh_path[:-1], sh_path[1:]))
-        # Get the geometry in the path
-        sh_geom = linemerge([self.edges.loc[(u, v, 0), 'geometry'] 
-                             for u, v in sh_edges])
 
         if DEBUG or PLOT:
             # Get the graph plot
             fig, ax = ox.plot_graph(self.G, node_alpha=0, edge_color='grey', 
                                     bgcolor='white', show = False)
+            colori = 0
 
         # Now let's generate some alternative paths
         alt_routes = [sh_path]
-        colori = 0
-        # The number of parts we need to divide the path into. We go for powers
-        # of two, and also include the case with one edge per group.
-        n_groups = [2**x for x in range(int(np.log2(len(sh_edges))))] \
-                    + [len(sh_edges)]
         for n in n_groups:
             # Stop earlier if we have enough routes
             if len(alt_routes) >= N_PATHS - N_RAND_PATHS:
@@ -228,9 +231,10 @@ class PathMaker():
             # Divide list of edges into equal parts
             parts = self.split(sh_edges, n)
             # We go part by part and set the weight of each element of the part to a large value
+            skips = 0
             for part in parts:
                 # Stop earlier if we have enough routes
-                if len(alt_routes) >= N_PATHS - N_RAND_PATHS:
+                if len(alt_routes) >= N_PATHS - N_RAND_PATHS or skips >= n/2:
                     break
                 # Let's set the length of this guy to a lot
                 G_local = copy.deepcopy(self.G)
@@ -242,6 +246,8 @@ class PathMaker():
                                              weight = "length")
                 # Is this route already in alternative routes?
                 if alt_route in alt_routes:
+                    # Skip this route
+                    skips += 1
                     continue
                 
                 # Check how similar it is compared to the shortest path
@@ -250,19 +256,24 @@ class PathMaker():
                 
                 if similarity > PATH_SIMILARITY_FACTOR:
                     # Skip this route
+                    skips += 1
                     continue
                 
                 # Append it
                 alt_routes.append(alt_route)
-                # Plot it
-                alt_geom = linemerge([self.edges.loc[(i, j, 0), 'geometry'] 
+                
+                if DEBUG or PLOT:
+                    # Plot it
+                    alt_geom = linemerge([self.edges.loc[(i, j, 0), 'geometry'] 
                                         for i, j in zip(alt_route[:-1], 
                                                         alt_route[1:])])
-                if DEBUG or PLOT:
                     ax.plot(alt_geom.xy[0], alt_geom.xy[1], 
                             color = colors[colori], linewidth = 2)
-                colori += 1
+                    colori += 1
         if DEBUG or PLOT:
+            # Get the geometry in the path
+            sh_geom = linemerge([self.edges.loc[(u, v, 0), 'geometry'] 
+                             for u, v in sh_edges])
             ax.plot(sh_geom.xy[0], sh_geom.xy[1], color = 'red', linewidth = 5)
             plt.show()
         return alt_routes

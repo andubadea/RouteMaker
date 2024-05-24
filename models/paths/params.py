@@ -129,12 +129,16 @@ class Parameters:
             # Get the paths and the path times
             paths = path_dict[acid]['paths']
             path_times = path_dict[acid]['times']
-            # K_f simply wants path indices
-            K_f.append(list(range(len(paths))))
+            # Let's ensure that we only account for unique paths
             flight_times = []
+            path_list = []
             # Get the edges in the path, and then convert those edges to edge
             # indices
             for path_idx, path in enumerate(paths):
+                # Check if this path is not the shortest path again
+                if path_idx > 0 and path == paths[0]:
+                    # We have reached a duplicate path, so we stop
+                    break
                 for path_edge_idx, edge in enumerate(zip(path[:-1], path[1:])):
                     u,v = edge
                     # Get the global edge idx only if we care about that edge
@@ -167,10 +171,14 @@ class Parameters:
                     # Set the maximum time window
                     if t_idx_int > max_tw:
                         max_tw = t_idx_int
-                # Add the path time
-                flight_times.append(path_times[path_idx][-1]-path_times[path_idx][0])
+                        
+                # Add the path time and idx
+                flight_times.append(path_times[path_idx][-1]-
+                                                path_times[path_idx][0])
+                path_list.append(path_idx)
             
             #B_f_k wants flight times per path
             B_fk.append(flight_times)
+            K_f.append(path_list)
         return K_f, B_fk, xp_fket, np.arange(max_tw+1)
             
