@@ -55,7 +55,7 @@ class ProblemGlobal:
                 
         # Flow capacity constraint
         self.model.addConstrs((gb.quicksum(
-                                self.p.xp_fket[f,k,e,tw] * self.z[f,k,y]
+                                self.p.xp_fket.get((f,k,e,tw),0) * self.z[f,k,y]
                                 for f in self.p.F
                                 for k in self.p.K_f[f]
                                 ) <= self.p.C_e

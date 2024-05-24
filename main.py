@@ -51,9 +51,9 @@ model = Model(scenario=scenario,
     max_flight_time=1800,
     overlap=True,
     scen_name='test',
-    num_cpus=16,
+    num_cpus=1,
     seed=42,
-    force_path_gen = True
+    force_path_gen = False
     )
 
 # Solve it

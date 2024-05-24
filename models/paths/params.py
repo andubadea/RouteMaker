@@ -1,6 +1,5 @@
 import numpy as np
-import geopandas as gpd
-import networkx as nx
+from scipy.sparse import coo_matrix
 from .paths import PathMaker
 
 class Parameters:
@@ -114,11 +113,15 @@ class Parameters:
         """
         K_f = []
         B_fk = []
-        # Initialise xp_fket as a big matrix
-        xp_fket = np.zeros((len(self.F),
-                            len(list(self.path_dict.values())[0]['paths']),
-                            len(self.E),
-                            len(self.W_t)), dtype=bool)
+        
+        # Initialise xp_fket as a dictionary
+        xp_fket = {}
+        
+        
+        # xp_fket = np.zeros((len(self.F),
+        #                     len(list(self.path_dict.values())[0]['paths']),
+        #                     len(self.E),
+        #                     len(self.W_t)), dtype=bool)
         
         # Path_dict is of shape {acid:{paths,times}}
         # iterate over all flight idxs
@@ -167,7 +170,7 @@ class Parameters:
                         t_idx = [t_idx_int]
                     # Set the equivalent xp values to 1
                     for t in t_idx:
-                        xp_fket[acidx][path_idx][edge_idx][t] = 1
+                        xp_fket[acidx,path_idx,edge_idx,t] = 1
                     # Set the maximum time window
                     if t_idx_int > max_tw:
                         max_tw = t_idx_int

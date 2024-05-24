@@ -11,7 +11,6 @@ import osmnx as ox
 import networkx as nx
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
-import time
 
 from shapely import convex_hull
 from shapely.ops import linemerge, unary_union, split
@@ -126,7 +125,6 @@ class PathMaker():
                                     total=len(input_arr)))
             # Transform the list into a dict
             paths = dict(results)
-        print(paths)
         # We cache them
         with open(cache_path, 'wb') as f:
             pickle.dump(paths, f)
@@ -180,7 +178,6 @@ class PathMaker():
             # We overshot, take the required number of paths
             ac_paths = ac_paths[:N_PATHS]
         elif len(ac_paths) < (N_PATHS):
-            print(f'Missing paths: {N_PATHS - len(ac_paths)}')
             # Add the shortest path a few more times and done
             ac_paths += [ac_paths[0]]*(N_PATHS-len(ac_paths))
         
