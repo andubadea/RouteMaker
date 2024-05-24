@@ -43,7 +43,7 @@ class Parameters:
         # travel time of each path for each flight f, and the binary variable
         # that shows whether flight f is on edge e at time t. Also update the
         # edges so they only contain the ones we actually use.
-        self.K_f, self.B_fk, self.xp_fket, self.W_t \
+        self.K_f, self.B_fk, self.xp_fket, self.W_t, self.et_list \
                         = self.process_paths(self.path_dict)
         
     def compute_high_degree_edges(self) -> np.ndarray:
@@ -183,5 +183,20 @@ class Parameters:
             #B_f_k wants flight times per path
             B_fk.append(flight_times)
             K_f.append(path_list)
-        return K_f, B_fk, xp_fket, np.arange(max_tw+1)
+            
+        # Rearrange the dictionary to match constraint format
+        xp_fket_rearranged = {}
+        for key in xp_fket.keys():
+            # We know that the value for this entry is 1
+            f,k,e,t = key
+            if (e,t) not in xp_fket_rearranged:
+                # Make a new dictionary for it
+                xp_fket_rearranged[e,t] = {}
+            xp_fket_rearranged[e,t][f,k] = 1
+            
+        # Compile an even nicer list
+        et_list = [tuple(xp_fket_rearranged[key].keys()) 
+                   for key in xp_fket_rearranged.keys()]
+            
+        return K_f, B_fk, xp_fket_rearranged, np.arange(max_tw+1), et_list
             

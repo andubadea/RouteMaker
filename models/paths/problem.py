@@ -7,7 +7,7 @@ class ProblemGlobal:
         self.p = parameters
         
         self.model = gb.Model(self.p.scen_name)
-        self.model.setParam('Threads', 8)
+        self.model.setParam('Threads', self.p.num_cpus)
         self.createVars()
         self.model.update
         self.createObjectiveFunction()
@@ -50,21 +50,18 @@ class ProblemGlobal:
                             # forall vars
                             for f in self.p.F
                             ),
-                            name = 'one_path_alt'
+                            name = 'palt'
         )
-                
+        
         # Flow capacity constraint
-        self.model.addConstrs((gb.quicksum(
-                                self.p.xp_fket.get((f,k,e,tw),0) * self.z[f,k,y]
-                                for f in self.p.F
-                                for k in self.p.K_f[f]
+        self.model.addConstrs((gb.quicksum(self.z[f,k,y] 
+                                    for f,k in self.p.et_list[etw]
                                 ) <= self.p.C_e
                             # forall vars
-                            for e in self.p.E
+                            for etw in range(len(self.p.et_list))
                             for y in self.p.Y
-                            for tw in range(len(self.p.W_t))
                             ),
-                            name = 'flowcapacity'
+                            name = 'flow'
         )
     
     def printSolution(self) -> None:
