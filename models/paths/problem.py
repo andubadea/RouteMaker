@@ -7,7 +7,6 @@ class ProblemGlobal:
         self.p = parameters
         
         self.model = gb.Model(self.p.scen_name)
-        self.model.setParam('Threads', self.p.num_cpus)
         self.createVars()
         self.model.update
         self.createObjectiveFunction()

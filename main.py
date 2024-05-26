@@ -34,6 +34,11 @@ model = Model(scenario=scenario,
     force_path_gen = False
     )
 
+# Set parameters
+model.problem.model.setParam('Threads', 8)
+model.problem.model.setParam('MIPGap', 1e-2)
+#model.problem.model.setParam('Method', 1)
+
 # Solve it
 model.solve()
 
