@@ -1,5 +1,6 @@
 from .params import Parameters
 from .problem import ProblemGlobal
+import pickle
 
 class PathModel:
     def __init__(self, **kwargs) -> None:
@@ -72,3 +73,9 @@ class PathModel:
         print('--- Solving problem.')
         self.problem.solve()
         self.problem.model.write(f'{self.params.scen_name}.sol')
+        # Also output the aircraft information in a pickle
+        with open(f'{self.params.scen_name}.pkl', 'wb') as f:
+            data = [self.params.acid2idx,
+                    self.params.idx2acid,
+                    self.params.path_dict]
+            pickle.dump(data, f)
