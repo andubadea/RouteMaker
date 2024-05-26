@@ -78,6 +78,7 @@ def parse_scenario(scenario_path:os.PathLike, num_ac:int = 0) -> dict:
     # Open the scenario
     with open(scenario_path) as f:
         scen_lines = f.readlines()
+        scen_name = os.path.basename(f.name).replace('.txt','')
         
     if num_ac == 0 or num_ac > len(scen_lines):
         num_ac = len(scen_lines)
@@ -92,4 +93,4 @@ def parse_scenario(scenario_path:os.PathLike, num_ac:int = 0) -> dict:
         destination = int(s[4])
         scenario[s[0]] = [dep_time, origin, destination]
     
-    return scenario
+    return scen_name, scenario
