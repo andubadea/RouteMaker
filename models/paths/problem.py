@@ -1,10 +1,12 @@
 import gurobipy as gb
 from gurobipy import GRB
 from .params import Parameters
+import numpy as np
 
 class ProblemGlobal:
     def __init__(self, parameters:Parameters) -> None:
         self.p = parameters
+        self.rng = np.random.default_rng(42)
         
         self.model = gb.Model(self.p.scen_name)
         self.createVars()
@@ -33,6 +35,10 @@ class ProblemGlobal:
         self.z = self.model.addVars(self.z_fky, 
                                     vtype = GRB.BINARY, 
                                     name = 'z')
+        # for f in self.p.F:
+        #     k = self.rng.choice(self.p.K_f[f])
+        #     y = self.rng.choice(self.p.Y)
+        #     self.z[f,k,y].Start = 1
 
     def createObjectiveFunction(self) -> None:
         self.model.setObjective(

@@ -1,6 +1,7 @@
 # Unimportant files
 data/help/*
 *.sol
+*.pkl
 models/paths/cache/*
 
 # Byte-compiled / optimized / DLL files

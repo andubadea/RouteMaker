@@ -88,7 +88,7 @@ class PathMaker():
         """
         dirname = os.path.dirname(__file__)
         # Get the cache file name
-        cache_path = os.path.join(dirname, f'cache/{self.scen_name}.pkl')
+        cache_path = os.path.join(dirname, f'cache/{self.scen_name}_paths.pkl')
         # Check if there is an existing cache file
         if not self.force_path_gen and os.path.exists(cache_path) and not DEBUG:
             # Load it
