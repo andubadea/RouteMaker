@@ -64,11 +64,10 @@ class PathModel:
         print('--- Initialising parameters.')
         self.params = Parameters(kwargs)
         
+    def solve(self):
         # Create the problem
         print('--- Creating problem.')
         self.problem = ProblemGlobal(self.params)
-        
-    def solve(self):
         # Solve the problem, and then save
         print('--- Solving problem.')
         self.problem.solve()
