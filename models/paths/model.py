@@ -1,6 +1,8 @@
 from .params import Parameters
 from .problem import ProblemGlobal
 import pickle
+import os
+from datetime import datetime
 
 class PathModel:
     def __init__(self, **kwargs) -> None:
@@ -60,21 +62,46 @@ class PathModel:
                 The random seed to use when generating aircraft paths. Defaults
                 to 42.
         """
+        # Get the current datetime
+        self.now = datetime.now().strftime("%Y%m%d%H%M%S")
         # Create the parameter instance
-        print('--- Initialising parameters.')
+        print('--- Initialising parameters ---')
         self.params = Parameters(kwargs)
         # Create the problem
-        print('--- Creating problem.')
+        print('--- Creating problem ---')
         self.problem = ProblemGlobal(self.params)
+        # Write the model
+        print('--- Saving model mps ---')
+        self.directory = f'data/output/{self.params.scen_name}_{self.now}'
+        if not os.path.exists(self.directory):
+            os.mkdir(self.directory)
+            
+        self.notypename = f'{self.directory}/{self.params.scen_name}_{self.now}'
+            
+    def outputmps(self):
+        """Output the MPS file."""
+        self.problem.model.write(f'{self.notypename}.mps')
         
     def solve(self):
-        # Solve the problem, and then save
+        """Solve the problem, then save the results."""
         print('--- Solving problem.')
         self.problem.solve()
-        self.problem.model.write(f'{self.params.scen_name}.sol')
+        # Save the results
+        self.problem.model.write(f'{self.notypename}.sol')
         # Also output the aircraft information in a pickle
-        with open(f'{self.params.scen_name}.pkl', 'wb') as f:
-            data = [self.params.acid2idx,
-                    self.params.idx2acid,
-                    self.params.path_dict]
+        z_dict = {}
+        for f in self.params.F:
+            for k in self.params.K_f[f]:
+                for y in self.params.Y:
+                    z_dict[f,k,y] = self.problem.z[f,k,y].X
+        
+        data = [z_dict,
+                self.params.acid2idx,
+                self.params.idx2acid,
+                self.params.path_dict]
+                    
+        with open(f'{self.notypename}.pkl', 
+                  'wb') as f:
             pickle.dump(data, f)
+            
+        return data

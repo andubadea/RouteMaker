@@ -1,4 +1,4 @@
 import os
 
-def makescen(city,model):
+def makescen(data):
     pass

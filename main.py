@@ -12,9 +12,7 @@ city = CityParser('Vienna')
 name, scenario = parse_scenario(city.scenarios[6])
 
 model = Model(scenario=scenario,
-    G=city.G,
-    nodes=city.nodes,
-    edges=city.edges,
+    city = city,
     time_horizon=7200,
     time_step=1,
     fl_num=10,
@@ -35,16 +33,21 @@ model = Model(scenario=scenario,
     force_path_gen = False
     )
 
+# Output the MPS file
+#model.outputmps()
+
 # Set parameters
-#model.problem.model.setParam('Threads', 4)
-#model.problem.model.setParam('MIPGap', 1e-3)
-#model.problem.model.setParam('Method', -1)
+model.problem.model.setParam('Threads', 4)
+model.problem.model.setParam('MIPGap', 1e-3)
+model.problem.model.setParam('Method', 1)
+model.problem.model.setParam('SolutionLimit', 2)
+model.problem.model.setParam('Heuristics', 1)
 
 # Solve it
-model.solve()
+data = model.solve()
 
 # Create the scenario
-makescen(city, model)
+makescen(data)
 print('--- Done! ---')
 
 # Generate all cache files

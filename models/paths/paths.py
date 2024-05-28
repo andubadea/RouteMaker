@@ -54,9 +54,11 @@ class PathMaker():
             
         self.force_path_gen = p.force_path_gen
         # Store the graph information
-        self.G = p.G
-        self.nodes = p.nodes
-        self.edges = p.edges
+        self.G = p.city.G
+        self.nodes = p.city.nodes
+        self.edges = p.city.edges
+        
+        self.city = p.city.name
         
         # Create the coordinate transformers
         city_centre = self.nodes.dissolve().centroid
@@ -86,9 +88,9 @@ class PathMaker():
         """If existing cache file exists, loads it. If not, creates the paths
         and saves them, then returns the path dict of form acid:list of paths.
         """
-        dirname = os.path.dirname(__file__)
         # Get the cache file name
-        cache_path = os.path.join(dirname, f'cache/{self.scen_name}_paths.pkl')
+        cache_path = os.path.join(
+            f'data/cities/{self.city}/cache/{self.scen_name}_paths.pkl')
         # Check if there is an existing cache file
         if not self.force_path_gen and os.path.exists(cache_path) and not DEBUG:
             # Load it

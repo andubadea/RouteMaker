@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.sparse import coo_matrix
 from .paths import PathMaker
 
 class Parameters:
@@ -55,10 +54,10 @@ class Parameters:
         Returns:
             np.ndarray: List of edges
         """
-        node_deg = self.G.degree()
+        node_deg = self.city.G.degree()
         idx2e = []
         e2idx = {}
-        for u,v,_ in self.edges.index:
+        for u,v,_ in self.city.edges.index:
             # Check the degrees of nodes u and v
             if node_deg[u] > 2 or node_deg[v] > 2:
                 # This edge counts
@@ -70,7 +69,7 @@ class Parameters:
     def compute_edge_flow_limit(self) -> np.ndarray:
         """The flow limit for each edge.
         """
-        return np.array([self.C * self.time_window/60]*len(self.edges)
+        return np.array([self.C * self.time_window/60]*len(self.city.edges)
                         ).astype(int)
 
     def compute_time_to_alt(self) -> np.ndarray:

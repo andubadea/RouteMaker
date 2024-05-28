@@ -8,6 +8,7 @@ class CityParser():
     """Load the city and parse its scenarios.
     """
     def __init__(self, city) -> None:
+        self.name = city
         self.G, self.nodes, self.edges = self.load_city(city)
         self.scenarios = self.get_scenario_list(city)
         self.scenario_names = self.get_scenario_names(city)
@@ -82,6 +83,8 @@ def parse_scenario(scenario_path:os.PathLike, num_ac:int = 0) -> dict:
         
     if num_ac == 0 or num_ac > len(scen_lines):
         num_ac = len(scen_lines)
+    else:
+        scen_name += f'_{num_ac}'
 
     # Create the dict
     scenario = {}
