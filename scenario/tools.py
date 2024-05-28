@@ -41,7 +41,7 @@ def makescen(model:Any) -> None:
     
     # Imperial units
     m2ft = 1/0.3048
-    mps2kts = 0.514444
+    mps2kts = 1/0.514444
     
     # Generate scenario lines from model solution.
     z_sol = []
@@ -62,7 +62,7 @@ def makescen(model:Any) -> None:
         # Get the departure time
         dep_time = tim2txt(path_dict[acid]['times'][k][0])
         # Get the departure altitude
-        alt = y * fl_size * m2ft
+        alt = (y+1) * fl_size * m2ft
         
         # Compile the create command
         prev_lon = nodes.at[rte_nodes[0],'geometry'].x
@@ -111,7 +111,7 @@ def makescen(model:Any) -> None:
             prev_lat = lat
             prev_lon = lon
             prev_node = node
-        
+
     # Save this scenario
     with open(model.notypename + '.scn', 'w') as f:
         f.write(scen_text)
