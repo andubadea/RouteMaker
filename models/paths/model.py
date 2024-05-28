@@ -63,7 +63,7 @@ class PathModel:
                 The random seed to use when generating aircraft paths. Defaults
                 to 42.
         """
-        print(f'************** {kwargs['scen_name']} **************')
+        print(f'************** {kwargs["scen_name"]} **************')
         # Get the current datetime
         self.now = datetime.now().strftime("%Y%m%d%H%M%S")
         # Create the parameter instance
