@@ -12,6 +12,7 @@ class Parameters:
         self.__dict__.update(kwargs)
         
         # Compute the parameters
+        print('> Computing parameters...')
         self.compute_params()
         
     def compute_params(self) -> None:

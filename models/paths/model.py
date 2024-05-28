@@ -62,16 +62,16 @@ class PathModel:
                 The random seed to use when generating aircraft paths. Defaults
                 to 42.
         """
+        print(f'************** {kwargs['scen_name']} **************')
         # Get the current datetime
         self.now = datetime.now().strftime("%Y%m%d%H%M%S")
         # Create the parameter instance
-        print('--- Initialising parameters ---')
+        print('\n----------- Initialising parameters -----------\n')
         self.params = Parameters(kwargs)
         # Create the problem
-        print('--- Creating problem ---')
+        print('\n----------- Creating problem -----------\n')
         self.problem = ProblemGlobal(self.params)
         # Write the model
-        print('--- Saving model mps ---')
         self.directory = f'data/output/{self.params.scen_name}_{self.now}'
         if not os.path.exists(self.directory):
             os.mkdir(self.directory)
@@ -80,12 +80,14 @@ class PathModel:
             
     def outputmps(self):
         """Output the MPS file."""
+        print('\n----------- Saving model mps -----------\n')
         self.problem.model.write(f'{self.notypename}.mps')
         
     def solve(self):
         """Solve the problem, then save the results."""
-        print('--- Solving problem.')
+        print('\n----------- Solving problem -----------\n')
         self.problem.solve()
+        print('\n----------- Saving solution files -----------\n')
         # Save the results
         self.problem.model.write(f'{self.notypename}.sol')
         # Also output the aircraft information in a pickle
@@ -103,5 +105,4 @@ class PathModel:
         with open(f'{self.notypename}.pkl', 
                   'wb') as f:
             pickle.dump(data, f)
-            
         return data

@@ -61,7 +61,8 @@ class PathMaker():
         self.city = p.city.name
         
         # Create the coordinate transformers
-        city_centre = self.nodes.dissolve().centroid
+        city_centre = self.nodes.to_crs('+proj=cea').dissolve(
+                                            ).centroid.to_crs(self.nodes.crs)
         utm_crs = self.convert_wgs_to_utm(city_centre.x[0], city_centre.y[0])
         self.geo2utm = pyproj.Transformer.from_crs(crs_from=4326, 
                                                    crs_to=utm_crs, 
@@ -94,19 +95,21 @@ class PathMaker():
         # Check if there is an existing cache file
         if not self.force_path_gen and os.path.exists(cache_path) and not DEBUG:
             # Load it
+            print('> Found cache file, attempting to load...')
             with open(cache_path, 'rb') as f:
                 paths = pickle.load(f)
+                print('> Cache file loaded.')
             # Simple check to see if this dictionary is complete. Otherwise, 
             # it will proceed with the path generation.
             if len(self.scenario) == len(paths):
                 # return
                 return paths
             else:
-                print('Cache file incomplete, forcing path generation.')
+                print('> Cache file incomplete, forcing path generation.')
         
         # We generate the paths for each aircraft
         if DEBUG or self.num_cpus == 1:
-            print(f'Generating paths for {self.scen_name}.')
+            print(f'> Generating paths for {self.scen_name}...')
             # Do single threaded to allow plots
             paths = {}
             for i, acid in enumerate(self.scenario.keys()):
@@ -115,6 +118,7 @@ class PathMaker():
                                             self.scenario[acid][2],
                                             acid])[1]
         else:
+            print(f'> Generating paths for {self.scen_name}...')
             # Create the input array of shape [[origin, dest, acid]...]
             input_arr = []
             for acid in self.scenario.keys():
@@ -128,8 +132,10 @@ class PathMaker():
             # Transform the list into a dict
             paths = dict(results)
         # We cache them
+        print('> Saving cache file...')
         with open(cache_path, 'wb') as f:
             pickle.dump(paths, f)
+        print('> Cache file saved.')
             
         if PLOT_ALL:
             # Plot all the shortest paths
