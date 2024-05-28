@@ -1,8 +1,9 @@
-from .params import Parameters
-from .problem import ProblemGlobal
 import pickle
 import os
 from datetime import datetime
+
+from .params import Parameters
+from .problem import ProblemGlobal
 
 class PathModel:
     def __init__(self, **kwargs) -> None:
@@ -89,6 +90,7 @@ class PathModel:
         self.problem.solve()
         print('\n----------- Saving solution files -----------\n')
         # Save the results
+        print('> Saving sol file...')
         self.problem.model.write(f'{self.notypename}.sol')
         # Also output the aircraft information in a pickle
         z_dict = {}
@@ -96,13 +98,9 @@ class PathModel:
             for k in self.params.K_f[f]:
                 for y in self.params.Y:
                     z_dict[f,k,y] = self.problem.z[f,k,y].X
-        
-        data = [z_dict,
-                self.params.acid2idx,
-                self.params.idx2acid,
-                self.params.path_dict]
+        print('> Saving data pickle...')
+        data = [z_dict, self.params]
                     
         with open(f'{self.notypename}.pkl', 
                   'wb') as f:
             pickle.dump(data, f)
-        return data

@@ -2,6 +2,7 @@
 data/help/*
 *.sol
 *.pkl
+*.scn
 models/paths/cache/*
 
 # Byte-compiled / optimized / DLL files
