@@ -516,6 +516,7 @@ class PathMaker():
                 else:
                     timestamps.append(timestamps[-1] + d1/self.v_cruise)
                 break
+
             lon_prev, lat_prev = path_geom.coords[i-1]
             lon_next, lat_next = path_geom.coords[i+1]
             lon, lat = path_geom.coords[i]
@@ -569,6 +570,7 @@ class PathMaker():
                                       + self.t_dcel)
                 else:
                     timestamps.append(timestamps[-1] + d2/self.v_cruise)
+            
         return timestamps
     
     @staticmethod
