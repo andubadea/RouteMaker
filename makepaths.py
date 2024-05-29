@@ -1,15 +1,9 @@
 import multiprocessing as mp
-
 from data.parser import CityParser, parse_scenario
-from scenario.tools import makescen
-
 from models.paths.pcache import PathMaker
-
-
 mp.set_start_method('fork')
 
 city = CityParser('Vienna')
-name, scenario = parse_scenario(city.scenarios[6])
 
 #Generate all cache files
 for scen in city.scenarios:

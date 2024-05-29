@@ -1,10 +1,22 @@
 import multiprocessing as mp
 
-#from models.full.model import FullModel as Model
-from models.paths.model import PathModel as Model
-from models.paths.pcache import PathCacheMaker
 from data.parser import CityParser, parse_scenario
 from scenario.tools import makescen
+
+# This is the original full (unsolvable) model
+#from models.full.model import FullModel as Model
+
+# This is the model that uses edge flows and paths
+from models.paths.model import PathModel as Model
+
+# This is the model that uses node flows and paths
+#from models.pathsnodes.model import PathNodeModel as Model
+
+# This is the model that uses edge flows and altitude has no weight
+#from models.altnoweight.model import PathAltNoWeightModel as Model
+
+# This is the model that uses edge flows and shortest path only
+#from models.altonly.model import PathAltOnlyModel as Model
 
 mp.set_start_method('fork')
 
@@ -15,10 +27,10 @@ model = Model(scenario=scenario,
               city = city, 
               time_horizon=7200, 
               time_step=1,
-              fl_num=10, 
+              fl_num=15, 
               fl_size=15.24, 
-              C=2, 
-              time_window=60, 
+              C=1, 
+              time_window=20, 
               v_cruise=15, 
               v_turn=4.78, 
               v_up=5, 
@@ -28,7 +40,7 @@ model = Model(scenario=scenario,
               max_flight_time=1800, 
               overlap=True,
               scen_name=name, 
-              num_cpus=4, 
+              num_cpus=16, 
               seed=42, 
               force_path_gen = False
               )

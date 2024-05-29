@@ -27,13 +27,13 @@ PLOT_ALL = False
 N_PATHS = 20 # Number of non-random paths to generate
 N_RAND_PATHS = 10 # Number of random paths to generate
 BUFFER_FACTOR = 1.5 # Higher means random path subgraph is smaller
-PATH_ATTEMPTS = 10 # Higher means more attempts per random path
+PATH_ATTEMPTS = 20 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
 # Length limit for random routes in function of shortest route length
 PATH_LENGTH_FACTOR = 2
 PATH_SIMILARITY_FACTOR = 0.9
 TURN_ANGLE = 25
-n_groups = [1,2,4,8]
+n_groups = [1,2,4,8,16]
 
 class PathMaker():
     """Module to make alternative paths for each aircraft in a scenario.
@@ -152,7 +152,6 @@ class PathMaker():
         
         # Create the deterministic paths
         ac_paths = self.make_deterministic_paths(origin, destination,sh_path)
-        
         if len(ac_paths) < N_PATHS - N_RAND_PATHS:
             # We came short of the target, compensate with random paths
             n_rands = N_RAND_PATHS + (N_PATHS - N_RAND_PATHS - len(ac_paths))
