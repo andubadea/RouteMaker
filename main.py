@@ -4,16 +4,19 @@ from data.parser import CityParser, parse_scenario
 from scenario.tools import makescen
 altonly = False
 
-# This is the model that uses edge flows and paths
+# This is the model that uses edge flows
 #from models.edges.model import EdgeModel as Model
 
-# This is the model that uses node flows and paths
-from models.nodes.model import NodeModel as Model
+# This is the model that uses node flows
+# from models.nodes.model import NodeModel as Model
+
+# This is the model that uses node flows and relaxed constraints
+from models.nodesrel.model import NodeRelModel as Model
 
 mp.set_start_method('fork')
 
 city = CityParser('Vienna')
-scen_idx = city.get_scenario_names(None).index('Flight_intention_120_1')
+scen_idx = city.get_scenario_names(None).index('Flight_intention_12_1')
 name, scenario = parse_scenario(city.scenarios[scen_idx])
 
 model = Model(scenario=scenario, 
@@ -42,11 +45,11 @@ model = Model(scenario=scenario,
 # model.outputmps()
 
 # Set model parameters
-model.problem.model.setParam('Threads', 4)
-#model.problem.model.setParam('MIPGap', 1e-3)
+model.problem.model.setParam('Threads', 16)
+#model.problem.model.setParam('MIPGap', 0)
 model.problem.model.setParam('Method', 1)
 #model.problem.model.setParam('SolutionLimit', 3)
-model.problem.model.setParam('TimeLimit', 1800)
+model.problem.model.setParam('TimeLimit', 3600)
 #model.problem.model.setParam('Heuristics', 1)
 
 # Solve it
