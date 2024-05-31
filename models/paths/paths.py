@@ -24,14 +24,14 @@ PLOT = False
 PLOT_ALL = False
 
 # Path generation
-N_PATHS = 5 # Number of non-random paths to generate
-N_RAND_PATHS = 1 # Number of random paths to generate
-BUFFER_FACTOR = 1.5 # Higher means random path subgraph is smaller
-PATH_ATTEMPTS = 10 # Higher means more attempts per random path
+N_PATHS = 10 # Number of non-random paths to generate
+N_RAND_PATHS = 5 # Number of random paths to generate
+BUFFER_FACTOR = 2 # Higher means random path subgraph is smaller
+PATH_ATTEMPTS = 20 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
 # Length limit for random routes in function of shortest route length
-PATH_LENGTH_FACTOR = 2
-PATH_SIMILARITY_FACTOR = 0.9
+PATH_LENGTH_FACTOR = 1.3
+PATH_SIMILARITY_FACTOR = 0.5
 TURN_ANGLE = 25
 n_groups = [1,2,4]
 

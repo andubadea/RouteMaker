@@ -60,6 +60,8 @@ class CityParser():
     def get_scenario_names(self, city:str) -> list:
         """Returns the names of the files in the scenario folder.
         """
+        if city is None:
+            city = self.name
         dirname = os.path.dirname(__file__)
         scendirname = os.path.join(dirname, f'cities/{city}/scenarios')
         return [x.replace('.txt','') for x in os.listdir(scendirname) 

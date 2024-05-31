@@ -24,16 +24,16 @@ PLOT = False
 PLOT_ALL = False
 
 # Path generation
-N_PATHS = 20 # Number of non-random paths to generate
-N_RAND_PATHS = 10 # Number of random paths to generate
-BUFFER_FACTOR = 1.5 # Higher means random path subgraph is smaller
+N_PATHS = 10 # Number of non-random paths to generate
+N_RAND_PATHS = 5 # Number of random paths to generate
+BUFFER_FACTOR = 2 # Higher means random path subgraph is smaller
 PATH_ATTEMPTS = 20 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
 # Length limit for random routes in function of shortest route length
-PATH_LENGTH_FACTOR = 2
-PATH_SIMILARITY_FACTOR = 0.9
+PATH_LENGTH_FACTOR = 1.3
+PATH_SIMILARITY_FACTOR = 0.5
 TURN_ANGLE = 25
-n_groups = [1,2,4,8,16]
+n_groups = [16,8,4,2,1]
 
 class PathMaker():
     """Module to make alternative paths for each aircraft in a scenario.
@@ -161,7 +161,6 @@ class PathMaker():
         # Create random paths
         ac_paths += self.make_random_routes(origin, destination, 
                                             n_rands, sh_path)
-        
         if len(ac_paths) > (N_PATHS):
             # We overshot, take the required number of paths
             ac_paths = ac_paths[:N_PATHS]
@@ -451,9 +450,105 @@ class PathMaker():
         """
         path_times = [self.calc_path_times(acid, path) for path in ac_paths]
         return {'paths':ac_paths, 'times':path_times}
+    
+    
+    def calc_path_times(self, acid:str, path:list) -> list:
+        # Get the aircraft departure time
+        dep_time = self.scenario[acid][0]
+        # Initialise the times list with the departure time
+        timestamps = [dep_time]
+        # Get the path geometry and the indices within it of the nodes
+        node_coord_idx = [0] # First node will of course have idx 0
+        edge_geoms = []
+        for u,v in zip(path[:-1], path[1:]):
+            edge_line = self.edges.loc[(u,v,0), 'geometry']
+            node_coord_idx.append(node_coord_idx[-1] + len(edge_line.xy[0])-1)
+            edge_geoms.append(edge_line)
+            
+        path_geom = linemerge(edge_geoms)
+        prev_turn_time = self.t_dcel
+        prev_turn_dist = self.d_dcel
+        prev_wplon, prev_wplat = path_geom.coords[0]
+        for i in range(1, len(path_geom.coords)):
+            # If the previous waypoint was a turn one, add extra time
+            leg_time = prev_turn_time
+            wplon, wplat = path_geom.coords[i]
+            # If destination, it's a turn
+            if i == (len(path_geom.coords)-1):
+                # Get the current distance to this waypoint
+                _, totaldist = self.kwikqdrdist(prev_wplat, prev_wplon, 
+                                      wplat, wplon)
+                cruise_dist = totaldist - self.d_dcel - prev_turn_dist
+                if cruise_dist < 0:
+                    # Just take it as 0
+                    cruise_dist = 0
+                time_cruise = cruise_dist / self.v_cruise
+                
+                # Finally add to estimated time
+                leg_time += time_cruise + self.t_dcel + time_turn/2
+                timestamps.append(timestamps[-1] + leg_time)
+                break
+            
+            next_wplon, next_wplat = path_geom.coords[i+1]
+            a1,_=self.kwikqdrdist(prev_wplat,prev_wplon,wplat,wplon)
+            a2,_=self.kwikqdrdist(wplat,wplon,next_wplat,next_wplon)
+            angle=abs(a2-a1)
+            if angle > 25:
+                time_turn = angle/self.yaw_r*0
+                # Get the current distance to this waypoint
+                _, totaldist = self.kwikqdrdist(prev_wplat, prev_wplon, 
+                                      wplat, wplon)
+                cruise_dist = totaldist - self.d_dcel - prev_turn_dist
+                if cruise_dist < 0:
+                    # Didn't have time to cruise. So we accelerated and
+                    # decelerated for half the distance each
+                    # Do we both accel and decel?
+                    if prev_turn_dist > 0:
+                        leg_time = 2*((totaldist*self.a_hoz/2+self.v_turn**2
+                                )**0.5 - self.v_turn)/self.a_hoz + time_turn/2
+                        timestamps.append(timestamps[-1] + leg_time)
+                        prev_turn_time = self.t_dcel + time_turn/2
+                        prev_turn_dist = self.d_dcel
+                        continue
+                    else:
+                        # We only decelerated
+                        leg_time = ((totaldist*self.a_hoz+self.v_turn**2
+                                )**0.5 - self.v_turn)/self.a_hoz + time_turn/2
+                        timestamps.append(timestamps[-1] + leg_time)
+                        prev_turn_time = self.t_dcel + time_turn/2
+                        prev_turn_dist = self.d_dcel
+                        continue
+                        
+                        
+                time_cruise = cruise_dist / self.v_cruise
+                
+                # Finally add to estimated time
+                leg_time += time_cruise + self.t_dcel + time_turn/2
+                timestamps.append(timestamps[-1] + leg_time)
+                
+                # Acceleration is symmetric to deceleration
+                prev_turn_time = self.t_dcel + time_turn/2
+                prev_turn_dist = self.d_dcel
+                prev_wplat, prev_wplon = wplat, wplon
+            else:
+                # Normal cruise calculation
+                _, totaldist = self.kwikqdrdist(prev_wplat, prev_wplon, 
+                                      wplat, wplon)
+                cruise_dist = totaldist - prev_turn_dist
+                if cruise_dist < 0:
+                    cruise_dist = 0
+                time_cruise = cruise_dist / self.v_cruise
+                leg_time += time_cruise
+                timestamps.append(timestamps[-1] + leg_time)
+                
+                prev_turn_time = 0
+                prev_turn_dist = 0
+                prev_wplat, prev_wplon = wplat, wplon
+        
+        return timestamps
             
         
-    def calc_path_times(self, acid:str, path:list) -> list:
+    def calc_path_times2(self, acid:str, path:list) -> list:
         """Calculates the time at which an aircraft will be at each node
         of this path.
 
@@ -477,7 +572,7 @@ class PathMaker():
             edge_geoms.append(edge_line)
             
         path_geom = linemerge(edge_geoms)
-        prev_turn = False
+        prev_turn = True
         # Now find the idx's of the turns in the geometry
         for i in range(1, len(path_geom.coords)):
             if i == (len(path_geom.coords)-1):

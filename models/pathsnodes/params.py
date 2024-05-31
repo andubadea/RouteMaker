@@ -60,7 +60,7 @@ class Parameters:
         n2idx = {}
         for node in self.city.nodes.index:
             # Check the degrees of nodes u and v
-            if node_deg[node] > 2:
+            if node_deg[node] > 2 and len(list(self.city.G.predecessors(node))) > 1:
                 # This node
                 idx2n.append(node)
                 n2idx[node] = len(idx2n)-1
