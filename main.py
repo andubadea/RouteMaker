@@ -16,7 +16,7 @@ from models.nodesrel.model import NodeRelModel as Model
 mp.set_start_method('fork')
 
 city = CityParser('Vienna')
-scen_idx = city.get_scenario_names(None).index('Flight_intention_12_1')
+scen_idx = city.get_scenario_names(None).index('Flight_intention_120_1')
 name, scenario = parse_scenario(city.scenarios[scen_idx])
 
 model = Model(scenario=scenario, 
@@ -46,16 +46,18 @@ model = Model(scenario=scenario,
 
 # Set model parameters
 model.problem.model.setParam('Threads', 16)
-#model.problem.model.setParam('MIPGap', 0)
+model.problem.model.setParam('MIPGap', 1e-3)
 model.problem.model.setParam('Method', 1)
 #model.problem.model.setParam('SolutionLimit', 3)
-model.problem.model.setParam('TimeLimit', 3600)
-#model.problem.model.setParam('Heuristics', 1)
+model.problem.model.setParam('Presolve', 2)
+model.problem.model.setParam('MIPFocus', 1)
+model.problem.model.setParam('NoRelHeurTime', 36000)
+model.problem.model.setParam('Heuristics', 1)
+model.problem.model.setParam('TimeLimit', 3600*24)
 
 # Solve it
-model.solve()
-
-# Create the scenario
-print('> Creating scn file...')
-makescen(model, altonly = altonly)
-print('\n################### Done! ###################\n\n')
+if model.solve():
+    # Create the scenario
+    print('> Creating scn file...')
+    makescen(model, altonly = altonly)
+    print('\n################### Done! ###################\n\n')
