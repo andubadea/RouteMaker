@@ -3,21 +3,12 @@ import multiprocessing as mp
 from data.parser import CityParser, parse_scenario
 from scenario.tools import makescen
 altonly = False
-# This is the original full (unsolvable) model
-#from models.full.model import FullModel as Model
 
 # This is the model that uses edge flows and paths
-#from models.paths.model import PathModel as Model
+#from models.edges.model import EdgeModel as Model
 
 # This is the model that uses node flows and paths
-from models.pathsnodes.model import PathNodeModel as Model
-
-# This is the model that uses edge flows and altitude has no weight
-#from models.altnoweight.model import PathAltNoWeightModel as Model
-
-# This is the model that uses edge flows and shortest path only
-# from models.altonly.model import PathAltOnlyModel as Model
-# altonly = True
+from models.nodes.model import NodeModel as Model
 
 mp.set_start_method('fork')
 
@@ -31,8 +22,8 @@ model = Model(scenario=scenario,
               time_step=1,
               fl_num=10, 
               fl_size=15.24, 
-              C=2, 
-              time_window=120, 
+              C=1, 
+              time_window=30, 
               v_cruise=15, 
               v_turn=4.78, 
               v_up=5, 
@@ -56,7 +47,7 @@ model.problem.model.setParam('Threads', 4)
 model.problem.model.setParam('Method', 1)
 #model.problem.model.setParam('SolutionLimit', 3)
 model.problem.model.setParam('TimeLimit', 1800)
-model.problem.model.setParam('Heuristics', 1)
+#model.problem.model.setParam('Heuristics', 1)
 
 # Solve it
 model.solve()

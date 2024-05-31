@@ -1,9 +1,11 @@
-import networkx as nx
-import geopandas as gpd
+import pickle
+import os
+from datetime import datetime
+
 from .params import Parameters
 from .problem import ProblemGlobal
 
-class FullModel():
+class EdgeModel:
     def __init__(self, **kwargs) -> None:
         """Model class that handles the parameters, problem creation and 
         solving.
@@ -61,13 +63,44 @@ class FullModel():
                 The random seed to use when generating aircraft paths. Defaults
                 to 42.
         """
+        print(f'************** {kwargs["scen_name"]} **************')
+        # Get the current datetime
+        self.now = datetime.now().strftime("%Y%m%d%H%M%S")
         # Create the parameter instance
+        print('\n----------- Initialising parameters -----------\n')
         self.params = Parameters(kwargs)
-        
         # Create the problem
+        print('\n----------- Creating problem -----------\n')
         self.problem = ProblemGlobal(self.params)
+        # Write the model
+        self.directory = f'data/output/{self.params.scen_name}_{self.now}'
+        if not os.path.exists(self.directory):
+            os.mkdir(self.directory)
+            
+        self.notypename = f'{self.directory}/{self.params.scen_name}_{self.now}'
+            
+    def outputmps(self):
+        """Output the MPS file."""
+        print('\n----------- Saving model mps -----------\n')
+        self.problem.model.write(f'{self.notypename}.mps')
         
     def solve(self):
-        # Solve the problem, and then save
+        """Solve the problem, then save the results."""
+        print('\n----------- Solving problem -----------\n')
         self.problem.solve()
-        self.problem.model.write(f'{self.params.scen_name}.sol')
+        print('\n----------- Saving solution files -----------\n')
+        # Save the results
+        print('> Saving sol file...')
+        self.problem.model.write(f'{self.notypename}.sol')
+        # Also output the aircraft information in a pickle
+        z_dict = {}
+        for f in self.params.F:
+            for k in self.params.K_f[f]:
+                for y in self.params.Y:
+                    z_dict[f,k,y] = self.problem.z[f,k,y].X
+        print('> Saving data pickle...')
+        data = [z_dict, self.params]
+                    
+        with open(f'{self.notypename}.pkl', 
+                  'wb') as f:
+            pickle.dump(data, f)

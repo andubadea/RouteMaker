@@ -1,6 +1,6 @@
 import multiprocessing as mp
 from data.parser import CityParser, parse_scenario
-from models.paths.pcache import PathMaker
+from scenario.pcache import PathMaker
 mp.set_start_method('fork')
 
 city = CityParser('Vienna')

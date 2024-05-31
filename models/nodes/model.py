@@ -5,7 +5,7 @@ from datetime import datetime
 from .params import Parameters
 from .problem import ProblemGlobal
 
-class PathNodeModel:
+class NodeModel:
     def __init__(self, **kwargs) -> None:
         """Model class that handles the parameters, problem creation and 
         solving.
