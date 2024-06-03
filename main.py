@@ -56,8 +56,8 @@ model.problem.model.setParam('Heuristics', 1)
 model.problem.model.setParam('TimeLimit', 3600*24)
 
 # Solve it
-if model.solve():
-    # Create the scenario
-    print('> Creating scn file...')
-    makescen(model, altonly = altonly)
-    print('\n################### Done! ###################\n\n')
+model.solve()
+# Create the scenario
+print('> Creating scn file...')
+makescen(model, altonly = altonly)
+print('\n################### Done! ###################\n\n')
