@@ -17,8 +17,7 @@ class ProblemGlobal:
         
     def solve(self) -> bool:
         self.model.optimize()
-        return (self.model.Status == gb.GRB.SUBOPTIMAL or 
-                self.model.Status == gb.GRB.OPTIMAL)
+        return True
     
     def createVars(self) -> None:
         """Decision variables:

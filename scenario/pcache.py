@@ -485,7 +485,7 @@ class PathMaker():
                 time_cruise = cruise_dist / self.v_cruise
                 
                 # Finally add to estimated time
-                leg_time += time_cruise + self.t_dcel + time_turn/2
+                leg_time += time_cruise + self.t_dcel
                 timestamps.append(timestamps[-1] + leg_time)
                 break
             

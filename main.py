@@ -16,7 +16,7 @@ from models.nodesrel.model import NodeRelModel as Model
 mp.set_start_method('fork')
 
 city = CityParser('Vienna')
-scen_idx = city.get_scenario_names(None).index('Flight_intention_120_1')
+scen_idx = city.get_scenario_names(None).index('Flight_intention_30_1')
 name, scenario = parse_scenario(city.scenarios[scen_idx])
 
 model = Model(scenario=scenario, 
@@ -25,7 +25,7 @@ model = Model(scenario=scenario,
               time_step=1,
               fl_num=10, 
               fl_size=15.24, 
-              C=1, 
+              C=1000, 
               time_window=30, 
               v_cruise=15, 
               v_turn=4.78, 
@@ -46,14 +46,14 @@ model = Model(scenario=scenario,
 
 # Set model parameters
 model.problem.model.setParam('Threads', 16)
-model.problem.model.setParam('MIPGap', 1e-3)
-model.problem.model.setParam('Method', 1)
+#model.problem.model.setParam('MIPGap', 1e-3)
+#model.problem.model.setParam('Method', 1)
 #model.problem.model.setParam('SolutionLimit', 3)
 model.problem.model.setParam('Presolve', 2)
-model.problem.model.setParam('MIPFocus', 1)
-model.problem.model.setParam('NoRelHeurTime', 36000)
-model.problem.model.setParam('Heuristics', 1)
-model.problem.model.setParam('TimeLimit', 3600*24)
+#model.problem.model.setParam('MIPFocus', 1)
+#model.problem.model.setParam('NoRelHeurTime', 36000)
+#model.problem.model.setParam('Heuristics', 1)
+model.problem.model.setParam('TimeLimit', 3600)
 
 # Solve it
 model.solve()

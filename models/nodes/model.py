@@ -87,9 +87,7 @@ class NodeModel:
     def solve(self):
         """Solve the problem, then save the results."""
         print('\n----------- Solving problem -----------\n')
-        if not self.problem.solve():
-            print('> No solution was found. Terminating.')
-            return False
+        self.problem.solve()
         print('\n----------- Saving solution files -----------\n')
         # Save the results
         print('> Saving sol file...')
