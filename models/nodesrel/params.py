@@ -46,7 +46,6 @@ class Parameters:
         self.K_f, self.B_fk, self.xp_fket, self.W_t, self.nt_list \
                         = self.process_paths(self.path_dict)
         
-        self.c_w = 2
         self.sw1 = 1
         self.sw2 = 2
         

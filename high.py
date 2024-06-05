@@ -1,7 +1,7 @@
 import highspy
 
 h = highspy.Highs()
-filename = 'Flight_intention_120_1.mps'
-h.readModel(filename)
+scenname = 'Flight_intention_30_1_20240605132230'
+h.readModel(f'data/output/{scenname}/{scenname}.mps')
 h.run()
-print('Model ', filename, ' has status ', h.getModelStatus())
+print('Model ', scenname, ' has status ', h.getModelStatus())

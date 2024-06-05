@@ -119,7 +119,8 @@ class ProblemGlobal:
         )
         
         # Second penalty constraint
-        self.model.addConstrs((self.p.sw2*(self.v[ntw,y]) - (self.p.sw2-self.p.sw1)*self.p.C_n <= self.pen[ntw,y]
+        self.model.addConstrs((self.p.sw2*(self.v[ntw,y]) - 
+                        (self.p.sw2-self.p.sw1)*self.p.C_n <= self.pen[ntw,y]
                               # forall vars
                             for ntw in range(len(self.p.nt_list))
                             for y in self.p.Y

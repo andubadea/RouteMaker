@@ -54,7 +54,7 @@ model.problem.model.setParam('Presolve', 2)
 model.problem.model.setParam('MIPFocus', 1)
 #model.problem.model.setParam('NoRelHeurTime', 600)
 #model.problem.model.setParam('Heuristics', 1)
-model.problem.model.setParam('TimeLimit', 1200)
+#model.problem.model.setParam('TimeLimit', 1200)
 
 # Solve it
 model.solve()
