@@ -50,34 +50,34 @@ class Parameters:
         self.sw1 = 1
         self.sw2 = 2
         
-        idx2fk = {}
-        fk2idx = {}
-        self.K = []
-        idx_k = 0
-        # Make a K index
-        for f in self.F:
-            for k in self.K_f[f]:
-                self.K.append(idx_k)
-                idx2fk[idx_k] = (f,k)
-                fk2idx[(f,k)] = idx_k
-                idx_k += 1
+        # idx2fk = {}
+        # fk2idx = {}
+        # self.K = []
+        # idx_k = 0
+        # # Make a K index
+        # for f in self.F:
+        #     for k in self.K_f[f]:
+        #         self.K.append(idx_k)
+        #         idx2fk[idx_k] = (f,k)
+        #         fk2idx[(f,k)] = idx_k
+        #         idx_k += 1
                 
         
-        # Var txt file
-        lines = ''
-        lines += f'N_y := {len(self.Y)};\n'
-        lines += f'N_k := {len(self.K)};\n'
-        lines += f'N_f := {len(self.F)};\n'
-        lines += f'N_s := {len(self.N)};\n'
-        lines += f'N_p := {len(self.W_t)};\n'
-        for f in self.F:
-            lines += f'set K_f[{f}] := {" ".join([str(fk2idx[(f,k)]) for k in self.K_f[f]])};\n'
-        for n,t in list(self.xp_fket.keys()):
-            lines += f'set K_sp[{n},{t}] := {" ".join([str(fk2idx[f,k]) for f,k in self.xp_fket[(n,t)]])};\n'
+        # # Var txt file
+        # lines = ''
+        # lines += f'param N_y := {len(self.Y)};\n'
+        # lines += f'param N_k := {len(self.K)};\n'
+        # lines += f'param N_f := {len(self.F)};\n'
+        # lines += f'param N_s := {len(self.N)};\n'
+        # lines += f'param N_p := {max([x[1] for x in self.xp_fket])};\n'
+        # for f in self.F:
+        #     lines += f'set K_f[{f}] := {" ".join([str(fk2idx[(f,k)]) for k in self.K_f[f]])};\n'
+        # for n,t in list(self.xp_fket.keys()):
+        #     lines += f'set K_sp[{n},{t}] := {" ".join([str(fk2idx[f,k]) for f,k in self.xp_fket[(n,t)]])};\n'
             
-        with open('problem.txt', 'w') as f:
-            f.write(lines)
-        quit()
+        # with open('problem_30_C1_T20.txt', 'w') as f:
+        #     f.write(lines)
+        # quit()
         
     def compute_high_degree_nodes(self) -> np.ndarray:
         """For this problem, we only care about the flow along nodes that have

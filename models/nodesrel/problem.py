@@ -85,7 +85,7 @@ class ProblemGlobal:
             gb.GRB.MINIMIZE) 
 
     def createConstraints(self) -> None:
-        # First of all, one and only one altitude and route combination can be
+        # First of all, one altitude and route combination can be
         # allocated per flight.
         self.model.addConstrs((gb.quicksum(self.z[f,k,y] 
                                 for k in self.p.K_f[f]
