@@ -25,7 +25,7 @@ PLOT_ALL = False
 
 # Path generation
 N_PATHS = 5 # Number of non-random paths to generate
-N_RAND_PATHS = 1 # Number of random paths to generate
+N_RAND_PATHS = 0 # Number of random paths to generate
 BUFFER_FACTOR = 1.5 # Higher means random path subgraph is smaller
 PATH_ATTEMPTS = 10 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
@@ -102,7 +102,7 @@ class PathMaker():
             # Simple check to see if this dictionary is complete. Otherwise, 
             # it will proceed with the path generation.
             if len(self.scenario) == len(paths):
-                # return
+                # return with the correct number of paths
                 return paths
             else:
                 print('> Cache file incomplete, forcing path generation.')

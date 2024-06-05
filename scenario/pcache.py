@@ -21,19 +21,19 @@ colors = list(mcolors.CSS4_COLORS.keys())
 random.shuffle(colors)
 DEBUG = False
 PLOT = False
-PLOT_ALL = False
 
 # Path generation
-N_PATHS = 10 # Number of non-random paths to generate
-N_RAND_PATHS = 5 # Number of random paths to generate
+N_PATHS = 5 # Number of non-random paths to generate
+N_RAND_PATHS = 1 # Number of random paths to generate
 BUFFER_FACTOR = 2 # Higher means random path subgraph is smaller
-PATH_ATTEMPTS = 20 # Higher means more attempts per random path
+PATH_ATTEMPTS = 50 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
 # Length limit for random routes in function of shortest route length
-PATH_LENGTH_FACTOR = 1.3
-PATH_SIMILARITY_FACTOR = 0.5
+PATH_LENGTH_FACTOR = 1.25
+PATH_LENGTH_RANDOM_FACTOR = 1.5
+PATH_SIMILARITY_FACTOR = 0.9
 TURN_ANGLE = 25
-n_groups = [16,8,4,2,1]
+n_groups = [3,2,1,8]
 
 class PathMaker():
     """Module to make alternative paths for each aircraft in a scenario.
@@ -73,20 +73,6 @@ class PathMaker():
         # Get the cache file name
         cache_path = os.path.join(
             f'data/cities/{self.city.name}/cache/{self.scen_name}_paths.pkl')
-        # Check if there is an existing cache file
-        if not self.force_path_gen and os.path.exists(cache_path) and not DEBUG:
-            # Load it
-            print('> Found cache file, attempting to load...')
-            with open(cache_path, 'rb') as f:
-                paths = pickle.load(f)
-                print('> Cache file loaded.')
-            # Simple check to see if this dictionary is complete. Otherwise, 
-            # it will proceed with the path generation.
-            if len(self.scenario) == len(paths):
-                # return
-                return paths
-            else:
-                print('> Cache file incomplete, forcing path generation.')
         
         # We generate the paths for each aircraft
         if DEBUG or self.num_cpus == 1:
@@ -117,20 +103,6 @@ class PathMaker():
         with open(cache_path, 'wb') as f:
             pickle.dump(paths, f)
         print('> Cache file saved.')
-            
-        if PLOT_ALL:
-            # Plot all the shortest paths
-            fig, ax = ox.plot_graph(self.G, node_alpha=0, edge_color='grey', 
-                                    bgcolor='white', show = False)
-            for acid in paths.keys():
-                sh_path = paths[acid]['paths'][0]
-                sh_edges = list(zip(sh_path[:-1], sh_path[1:]))
-                sh_geom = linemerge([self.edges.loc[(u, v, 0), 'geometry'] 
-                                    for u, v in sh_edges])
-                ax.plot(sh_geom.xy[0], sh_geom.xy[1], label = acid,
-                        linewidth = 5)
-            plt.legend()
-            plt.show()
         return paths
         
     def make_paths(self, args) -> list:
@@ -158,9 +130,9 @@ class PathMaker():
         else:
             n_rands = N_RAND_PATHS
 
-        # Create random paths
-        ac_paths += self.make_random_routes(origin, destination, 
-                                            n_rands, sh_path)
+        # Add the random paths
+        ac_paths = self.make_random_routes(origin, destination, 
+                                            n_rands, sh_path, ac_paths)
         if len(ac_paths) > (N_PATHS):
             # We overshot, take the required number of paths
             ac_paths = ac_paths[:N_PATHS]
@@ -263,7 +235,7 @@ class PathMaker():
         return alt_routes
     
     def make_random_routes(self, origin:int, destination:int, n_paths:int, 
-                           sh_path:list = None) -> list:
+                           sh_path:list = None, ac_paths:list = []) -> list:
         """Creates randomly generated paths by selecting random nodes within
         a subgraph around the shortest path.
 
@@ -328,15 +300,15 @@ class PathMaker():
         sh_G = self.G.subgraph(sh_poly_nodes)
         # Within the subgraph, increase the weights of the edges of the shortest
         # path to discourage their use.
-        for u,v in sh_edges:
-            # Make these edges undesirable
-            sh_G.edges[u,v,0]['length'] *= 3
+        # for u,v in sh_edges:
+        #     # Make these edges less desirable
+        #     sh_G.edges[u,v,0]['length'] *= 1.1
 
         # The loop
         attempts = 0
-        ac_paths = []
+        added = 0
         colori = 0
-        while attempts < PATH_ATTEMPTS and len(ac_paths) < n_paths:
+        while attempts < PATH_ATTEMPTS and added < n_paths:
             chosen_nodes = self.rng.choice(list(sh_G.nodes.keys()), 
                                            N_RAND_NODES)
             
@@ -380,7 +352,12 @@ class PathMaker():
             # Check the length requirement
             alt_length = sum([self.edges.loc[(i,j,0), 'length'] 
                                 for i,j in zip(alt_path[:-1], alt_path[1:])])
-            if alt_length > sh_geom_utm.length * PATH_LENGTH_FACTOR:
+            if alt_length > sh_geom_utm.length * PATH_LENGTH_RANDOM_FACTOR:
+                # Try again
+                attempts+=1
+                continue
+            
+            if alt_path in ac_paths:
                 # Try again
                 attempts+=1
                 continue
@@ -391,6 +368,7 @@ class PathMaker():
                         linewidth = 3)
             # Create the full node list and add it to the list of nodes
             ac_paths.append(alt_path)
+            added += 1
             colori += 1
             attempts = 0
                 
@@ -545,105 +523,6 @@ class PathMaker():
                 prev_turn_dist = 0
                 prev_wplat, prev_wplon = wplat, wplon
         
-        return timestamps
-            
-        
-    def calc_path_times2(self, acid:str, path:list) -> list:
-        """Calculates the time at which an aircraft will be at each node
-        of this path.
-
-        Args:
-            acid (str): Aircraft ID
-            path (list): List of nodes.
-
-        Returns:
-            list: List of times for each node.
-        """
-        # Get the aircraft departure time
-        dep_time = self.scenario[acid][0]
-        # Initialise the times list with the departure time
-        timestamps = [dep_time]
-        # Get the path geometry and the indices within it of the nodes
-        node_coord_idx = [0] # First node will of course have idx 0
-        edge_geoms = []
-        for u,v in zip(path[:-1], path[1:]):
-            edge_line = self.edges.loc[(u,v,0), 'geometry']
-            node_coord_idx.append(node_coord_idx[-1] + len(edge_line.xy[0])-1)
-            edge_geoms.append(edge_line)
-            
-        path_geom = linemerge(edge_geoms)
-        prev_turn = True
-        # Now find the idx's of the turns in the geometry
-        for i in range(1, len(path_geom.coords)):
-            if i == (len(path_geom.coords)-1):
-                # Destination needs to be accounted differently
-                lon_prev, lat_prev = path_geom.coords[i-1]
-                lon, lat = path_geom.coords[i]
-                a1, d1=self.kwikqdrdist(lat_prev,lon_prev,lat,lon)
-                a2, d2=self.kwikqdrdist(lat,lon,lat_next,lon_next)
-                if prev_turn:
-                    # Then we must account for the time to accelerate
-                    d1 -= self.d_dcel
-                    if d1 < 0:
-                        d1 = 0 # We never accelerated enough then
-                    timestamps.append(timestamps[-1] + d1/self.v_cruise 
-                                      + self.t_dcel)
-                else:
-                    timestamps.append(timestamps[-1] + d1/self.v_cruise)
-                break
-            lon_prev, lat_prev = path_geom.coords[i-1]
-            lon_next, lat_next = path_geom.coords[i+1]
-            lon, lat = path_geom.coords[i]
-            # Get the angle and distance
-            a1, d1=self.kwikqdrdist(lat_prev,lon_prev,lat,lon)
-            a2, d2=self.kwikqdrdist(lat,lon,lat_next,lon_next)
-            angle=abs(a2-a1)
-
-            if angle>180:
-                angle=360-angle
-                
-            # This is a turn if angle is greater than 25
-            if angle < 25:
-                # This isn't a turn, but did we have a turn before?
-                if prev_turn:
-                    # Then we must account for the time to accelerate
-                    d1 -= self.d_dcel
-                    if d1 < 0:
-                        d1 = 0 # We never accelerated enough then
-                    timestamps.append(timestamps[-1] + d1/self.v_cruise 
-                                      + self.t_dcel)
-                else:
-                    timestamps.append(timestamps[-1] + d1/self.v_cruise)
-                prev_turn = False
-                
-            else:
-                # This is a turn, was the previous also a turn?
-                if prev_turn:
-                    # Account for double turn
-                    d1 -= self.d_dcel * 2
-                    if d1 < 0:
-                        d1 = 0
-                    timestamps.append(timestamps[-1] + d1/self.v_cruise 
-                                      + 2 * self.t_dcel)
-                else:
-                    # Only account for one turn
-                    d1 -= self.d_dcel
-                    if d1 < 0:
-                        d1 = 0 # We never accelerated enough then
-                    timestamps.append(timestamps[-1] + d1/self.v_cruise 
-                                      + self.t_dcel)
-                prev_turn = True
-
-            if i == len(path_geom.coords)-1:
-                # Also add the destination time
-                if prev_turn:
-                    d2 -= self.d_dcel
-                    if d2 < 0:
-                        d2 = 0 # We never accelerated enough then
-                    timestamps.append(timestamps[-1] + d2/self.v_cruise 
-                                      + self.t_dcel)
-                else:
-                    timestamps.append(timestamps[-1] + d2/self.v_cruise)
         return timestamps
     
     @staticmethod

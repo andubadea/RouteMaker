@@ -17,6 +17,24 @@ class ProblemGlobal:
         
     def solve(self) -> bool:
         self.model.optimize()
+        # Output some data
+        # Violations
+        v_tot = 0
+        for ntw,y in self.v_ntwy:
+            if self.v[ntw,y].X > 0:
+                v_tot += 1
+        print(f'Total flow constraints violated: {v_tot}')
+        # More than one altitude and path
+        for f in self.p.F:
+            found_one = False
+            for k in self.p.K_f[f]:
+                for y in self.p.Y:
+                    if self.z[f,k,y].X > 0:
+                        if not found_one:
+                            found_one = True
+                        else:
+                            print(self.p.idx2acid(f))
+                            continue
         return True
     
     def createVars(self) -> None:
@@ -48,23 +66,22 @@ class ProblemGlobal:
                 self.pen_ntwy.append(tp)
                 
         self.v = self.model.addVars(self.v_ntwy,
-                                    vtype = GRB.INTEGER,
+                                    vtype = GRB.CONTINUOUS,
                                     lb=0,
-                                    ub=self.p.C_n*10,
                                     name = 'v')
         
         # And a penalty variable
         self.pen = self.model.addVars(self.pen_ntwy,
-                                    vtype = GRB.INTEGER,
+                                    vtype = GRB.CONTINUOUS,
                                     lb=0,
                                     name = 'pen')
 
     def createObjectiveFunction(self) -> None:
         self.model.setObjective(
-            gb.quicksum(self.z[f,k,y] * (self.p.B_fk[f][k] + self.p.Dlt_y[y])
+            (gb.quicksum(self.z[f,k,y] * (self.p.B_fk[f][k] + self.p.Dlt_y[y])
                 for f,k,y in self.z) + \
             gb.quicksum(self.pen[ntw,y] 
-                for ntw,y in self.pen), 
+                for ntw,y in self.pen))/len(self.p.F), 
             gb.GRB.MINIMIZE) 
 
     def createConstraints(self) -> None:
@@ -73,7 +90,7 @@ class ProblemGlobal:
         self.model.addConstrs((gb.quicksum(self.z[f,k,y] 
                                 for k in self.p.K_f[f]
                                 for y in self.p.Y 
-                                ) == 1 
+                                ) >= 1 
                             # forall vars
                             for f in self.p.F
                             ),
@@ -92,7 +109,7 @@ class ProblemGlobal:
         )
         
         # First penalty constraint
-        self.model.addConstrs((self.p.sw1*self.v[ntw,y]-self.p.C_n \
+        self.model.addConstrs((self.p.sw1*(self.v[ntw,y]) \
                                 <= self.pen[ntw,y]
                               # forall vars
                             for ntw in range(len(self.p.nt_list))
@@ -102,8 +119,7 @@ class ProblemGlobal:
         )
         
         # Second penalty constraint
-        self.model.addConstrs((self.p.sw2*self.v[ntw,y]-self.p.C_n*self.p.c_w \
-                                <= self.pen[ntw,y]
+        self.model.addConstrs((self.p.sw2*(self.v[ntw,y]-self.p.C_n*self.p.c_w) + self.p.sw1*(self.p.C_n*self.p.c_w) <= self.pen[ntw,y]
                               # forall vars
                             for ntw in range(len(self.p.nt_list))
                             for y in self.p.Y

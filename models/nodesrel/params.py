@@ -46,9 +46,38 @@ class Parameters:
         self.K_f, self.B_fk, self.xp_fket, self.W_t, self.nt_list \
                         = self.process_paths(self.path_dict)
         
-        self.c_w = 3
+        self.c_w = 2
         self.sw1 = 1
-        self.sw2 = 100
+        self.sw2 = 2
+        
+        idx2fk = {}
+        fk2idx = {}
+        self.K = []
+        idx_k = 0
+        # Make a K index
+        for f in self.F:
+            for k in self.K_f[f]:
+                self.K.append(idx_k)
+                idx2fk[idx_k] = (f,k)
+                fk2idx[(f,k)] = idx_k
+                idx_k += 1
+                
+        
+        # Var txt file
+        lines = ''
+        lines += f'N_y := {len(self.Y)};\n'
+        lines += f'N_k := {len(self.K)};\n'
+        lines += f'N_f := {len(self.F)};\n'
+        lines += f'N_s := {len(self.N)};\n'
+        lines += f'N_p := {len(self.W_t)};\n'
+        for f in self.F:
+            lines += f'set K_f[{f}] := {" ".join([str(fk2idx[(f,k)]) for k in self.K_f[f]])};\n'
+        for n,t in list(self.xp_fket.keys()):
+            lines += f'set K_sp[{n},{t}] := {" ".join([str(fk2idx[f,k]) for f,k in self.xp_fket[(n,t)]])};\n'
+            
+        with open('problem.txt', 'w') as f:
+            f.write(lines)
+        quit()
         
     def compute_high_degree_nodes(self) -> np.ndarray:
         """For this problem, we only care about the flow along nodes that have
@@ -81,8 +110,8 @@ class Parameters:
         """Time it takes to get to and from each altitude level.
         """
         # Speed in function of time steps
-        return np.array([int(self.fl_size * (i+1) / self.v_up) + 
-                int(self.fl_size * (i+1) / self.v_down) 
+        return np.array([(int(self.fl_size * (i+1) / self.v_up) + 
+                int(self.fl_size * (i+1) / self.v_down))/60
                 for i in range(self.fl_num)])
         
     def compute_time_windows(self) -> np.ndarray:
@@ -140,6 +169,8 @@ class Parameters:
                 if path_idx > 0 and path == paths[0]:
                     # We have reached a duplicate path, so we stop
                     break
+                if path_idx > (self.num_paths-1):
+                    break
                 for path_node_idx, node in enumerate(path):
                     # Get the global node idx only if we care about that node
                     if node in self.n2idx.keys():
@@ -177,9 +208,10 @@ class Parameters:
                     if t_idx_int > max_tw:
                         max_tw = t_idx_int
                         
-                # Add the path time and idx
-                flight_times.append(path_times[path_idx][-1]-
-                                                path_times[path_idx][0])
+                # Add the path time in minutes
+                
+                flight_times.append((path_times[path_idx][-1]-
+                                        path_times[path_idx][0])/60)
                 path_list.append(path_idx)
             
             #B_f_k wants flight times per path
