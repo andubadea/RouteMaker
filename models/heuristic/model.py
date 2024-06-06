@@ -5,10 +5,11 @@ from datetime import datetime
 from .params import Parameters
 from .problem import ProblemGlobal
 
-class NodeRelModel:
-    def __init__(self, **kwargs) -> None:
-        """Model class that handles the parameters, problem creation and 
-        solving.
+class HeuristicModel:
+    def __init__(self, kwargs:dict) -> None:
+        """This model formulation is very good at finding heuristic solutions
+        using the NoRelHeuristic. It is used to find a good fesible solution
+        in order to warm-start the bound model.
         
         Args:
             scenario (dict): 
@@ -63,32 +64,33 @@ class NodeRelModel:
                 The random seed to use when generating aircraft paths. Defaults
                 to 42.
         """
-        print(f'************** {kwargs["scen_name"]} **************')
         # Get the current datetime
         self.now = datetime.now().strftime("%Y%m%d%H%M%S")
         # Create the parameter instance
-        print('\n----------- Initialising parameters -----------\n')
+        print('\n----- Initialising parameters -----\n')
         self.params = Parameters(kwargs)
         # Create the problem
-        print('\n----------- Creating problem -----------\n')
+        print('\n----- Creating problem -----\n')
         self.problem = ProblemGlobal(self.params)
         # Write the model
-        self.directory = f'data/output/{self.params.scen_name}_{self.now}'
+        self.directory = f'data/output/{self.params.scen_name}_H_C{kwargs["C"]
+                                        }_T{kwargs["time_window"]}_{self.now}'
         if not os.path.exists(self.directory):
             os.mkdir(self.directory)
             
-        self.notypename = f'{self.directory}/{self.params.scen_name}_{self.now}'
+        self.notypename = f'{self.directory}/{self.params.scen_name}_H_C{
+                            kwargs["C"]}_T{kwargs["time_window"]}_{self.now}'
             
     def outputmps(self):
         """Output the MPS file."""
-        print('\n----------- Saving model mps -----------\n')
+        print('\n----- Saving model mps -----\n')
         self.problem.model.write(f'{self.notypename}.mps')
         
     def solve(self):
         """Solve the problem, then save the results."""
-        print('\n----------- Solving problem -----------\n')
+        print('\n----- Solving problem -----\n')
         self.problem.solve()
-        print('\n----------- Saving solution files -----------\n')
+        print('\n----- Saving solution files -----\n')
         # Save the results
         print('> Saving sol file...')
         self.problem.model.write(f'{self.notypename}.sol')

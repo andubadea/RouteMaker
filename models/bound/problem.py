@@ -21,7 +21,7 @@ class ProblemGlobal:
         # Violations
         v_tot = 0
         for ntw,y in self.v_ntwy:
-            if self.v[ntw,y].X > 0:
+            if self.v[ntw,y].X > 0.1:
                 v_tot += 1
         print(f'Total flow constraints violated: {v_tot}')
         # More than one altitude and path
@@ -43,7 +43,7 @@ class ProblemGlobal:
         v_ntwy - Constraint violation
         pen_ntwy - Constraint violation penalty
         """
-        # Create the variable
+        # Whether flight f has path k and flight level y selected
         self.z_fky = []
         for f in self.p.F:
             for k in self.p.K_f[f]:
@@ -55,6 +55,26 @@ class ProblemGlobal:
         self.z = self.model.addVars(self.z_fky, 
                                     vtype = GRB.BINARY, 
                                     name = 'z')
+        
+        # Whether flight f has flight level y selected
+        self.h_fy = []
+        for f in self.p.F:
+            for y in self.p.Y:
+                tp = f,y
+                self.h_fy.append(tp)
+        self.h = self.model.addVars(self.h_fy, 
+                                    vtype = GRB.BINARY, 
+                                    name = 'h')
+        
+        # Whether flight f has path k selected
+        self.r_fk = []
+        for f in self.p.F:
+            for k in self.p.K_f[f]:
+                tp = f,k
+                self.r_fk.append(tp)
+        self.r = self.model.addVars(self.r_fk, 
+                                    vtype = GRB.BINARY, 
+                                    name = 'r')
         
         # We also need a constraint violation variable
         self.v_ntwy = []
@@ -76,6 +96,11 @@ class ProblemGlobal:
                                     lb=0,
                                     name = 'pen')
 
+    def createObjectiveFunction2(self) -> None:
+        self.model.setObjective((gb.quicksum(self.pen[ntw,y] 
+                for ntw,y in self.pen))/len(self.p.F), 
+            gb.GRB.MINIMIZE) 
+        
     def createObjectiveFunction(self) -> None:
         self.model.setObjective(
             (gb.quicksum(self.z[f,k,y] * (self.p.B_fk[f][k] + self.p.Dlt_y[y])
@@ -87,14 +112,31 @@ class ProblemGlobal:
     def createConstraints(self) -> None:
         # First of all, one altitude and route combination can be
         # allocated per flight.
-        self.model.addConstrs((gb.quicksum(self.z[f,k,y] 
-                                for k in self.p.K_f[f]
+        self.model.addConstrs((gb.quicksum(self.h[f,y] 
                                 for y in self.p.Y 
                                 ) >= 1 
                             # forall vars
                             for f in self.p.F
                             ),
-                            name = 'palt'
+                            name = 'alt'
+        )
+        
+        self.model.addConstrs((gb.quicksum(self.r[f,k] 
+                                for k in self.p.K_f[f]
+                                ) >= 1 
+                            # forall vars
+                            for f in self.p.F
+                            ),
+                            name = 'path'
+        )
+        
+        self.model.addConstrs((self.z[f,k,y] >= self.r[f,k] + self.h[f,y] - 1 
+                            # forall vars
+                            for f in self.p.F
+                            for k in self.p.K_f[f]
+                            for y in self.p.Y
+                            ),
+                            name = 'link'
         )
         
         # Flow capacity constraint

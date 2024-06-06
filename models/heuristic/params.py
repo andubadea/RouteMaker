@@ -60,21 +60,22 @@ class Parameters:
         #         idx2fk[idx_k] = (f,k)
         #         fk2idx[(f,k)] = idx_k
         #         idx_k += 1
-                
         
         # # Var txt file
         # lines = ''
         # lines += f'param N_y := {len(self.Y)};\n'
         # lines += f'param N_k := {len(self.K)};\n'
         # lines += f'param N_f := {len(self.F)};\n'
-        # lines += f'param N_s := {len(self.N)};\n'
-        # lines += f'param N_p := {max([x[1] for x in self.xp_fket])};\n'
+        # lines += f'param N_sp := {len(self.nt_list)};\n'
         # for f in self.F:
         #     lines += f'set K_f[{f}] := {" ".join([str(fk2idx[(f,k)]) for k in self.K_f[f]])};\n'
-        # for n,t in list(self.xp_fket.keys()):
-        #     lines += f'set K_sp[{n},{t}] := {" ".join([str(fk2idx[f,k]) for f,k in self.xp_fket[(n,t)]])};\n'
+        # for ntw_idx in range(len(self.nt_list)):
+        #     lines += f'set K_sp[{ntw_idx}] := {" ".join([str(fk2idx[f,k]) for f,k in self.nt_list[ntw_idx]])};\n'
+        # for fk_idx in self.K:
+        #     f,k = idx2fk[fk_idx]
+        #     lines += f'set B_k[{fk_idx}] := {self.B_fk[f][k]}'
             
-        # with open('problem_30_C1_T20.txt', 'w') as f:
+        # with open('problem_120_C1_T20.dat', 'w') as f:
         #     f.write(lines)
         # quit()
         

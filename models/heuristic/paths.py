@@ -24,14 +24,14 @@ PLOT = False
 PLOT_ALL = False
 
 # Path generation
-N_PATHS = 10 # Number of non-random paths to generate
-N_RAND_PATHS = 5 # Number of random paths to generate
-BUFFER_FACTOR = 2 # Higher means random path subgraph is smaller
-PATH_ATTEMPTS = 20 # Higher means more attempts per random path
+N_PATHS = 5 # Number of non-random paths to generate
+N_RAND_PATHS = 0 # Number of random paths to generate
+BUFFER_FACTOR = 1.5 # Higher means random path subgraph is smaller
+PATH_ATTEMPTS = 10 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
 # Length limit for random routes in function of shortest route length
-PATH_LENGTH_FACTOR = 1.3
-PATH_SIMILARITY_FACTOR = 0.5
+PATH_LENGTH_FACTOR = 2
+PATH_SIMILARITY_FACTOR = 0.9
 TURN_ANGLE = 25
 n_groups = [1,2,4]
 
@@ -102,7 +102,7 @@ class PathMaker():
             # Simple check to see if this dictionary is complete. Otherwise, 
             # it will proceed with the path generation.
             if len(self.scenario) == len(paths):
-                # return
+                # return with the correct number of paths
                 return paths
             else:
                 print('> Cache file incomplete, forcing path generation.')
@@ -516,6 +516,7 @@ class PathMaker():
                 else:
                     timestamps.append(timestamps[-1] + d1/self.v_cruise)
                 break
+
             lon_prev, lat_prev = path_geom.coords[i-1]
             lon_next, lat_next = path_geom.coords[i+1]
             lon, lat = path_geom.coords[i]
@@ -569,6 +570,7 @@ class PathMaker():
                                       + self.t_dcel)
                 else:
                     timestamps.append(timestamps[-1] + d2/self.v_cruise)
+            
         return timestamps
     
     @staticmethod

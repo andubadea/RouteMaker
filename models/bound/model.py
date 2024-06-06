@@ -1,14 +1,16 @@
 import pickle
 import os
 from datetime import datetime
+from typing import Any
 
 from .params import Parameters
 from .problem import ProblemGlobal
 
-class NodeModel:
-    def __init__(self, **kwargs) -> None:
-        """Model class that handles the parameters, problem creation and 
-        solving.
+class BoundModel:
+    def __init__(self, kwargs:dict, hmodel:Any = None) -> None:
+        """This model is very good at getting to the branch and bound part
+        quickly, but it works best if it is provided with a good fesible
+        solution as a warm start.
         
         Args:
             scenario (dict): 
@@ -63,32 +65,58 @@ class NodeModel:
                 The random seed to use when generating aircraft paths. Defaults
                 to 42.
         """
-        print(f'************** {kwargs["scen_name"]} **************')
-        # Get the current datetime
-        self.now = datetime.now().strftime("%Y%m%d%H%M%S")
         # Create the parameter instance
-        print('\n----------- Initialising parameters -----------\n')
+        print('\n----- Initialising parameters -----\n')
         self.params = Parameters(kwargs)
         # Create the problem
-        print('\n----------- Creating problem -----------\n')
+        print('\n----- Creating problem -----\n')
         self.problem = ProblemGlobal(self.params)
+        if hmodel is not None:
+            # We can hot start
+            print('> Found warm start model, applying solution...')
+            self.now = hmodel.now
+            hproblem = hmodel.problem
+            # First, set the values of all r_fk and h_fy as 0
+            for f,k in self.problem.r_fk:
+                self.problem.r[f,k].Start = 0
+            for f,y in self.problem.h_fy:
+                self.problem.h[f,y].Start = 0
+
+            # Loop through the z's, and set the r_fk and h_fy as well
+            for f,k,y in self.problem.z_fky:
+                self.problem.z[f,k,y].Start = hproblem.z[f,k,y].X
+                if hproblem.z[f,k,y].X > 0.5:
+                    # Set r_fk and h_fy
+                    self.problem.r[f,k].Start = 1
+                    self.problem.h[f,y].Start = 1
+                    
+            # Loop through the penalties and the violations
+            for ntw,y in self.problem.v_ntwy:
+                self.problem.v[ntw,y].Start = hproblem.v[ntw,y].X
+                self.problem.pen[ntw,y].Start = hproblem.pen[ntw,y].X
+            print('> Warm start solution applied.')
+        else:
+            self.now = datetime.now().strftime("%Y%m%d%H%M%S")
+            
         # Write the model
-        self.directory = f'data/output/{self.params.scen_name}_{self.now}'
+        self.directory = f'data/output/{self.params.scen_name}_B_C{kwargs["C"]
+                                        }_T{kwargs["time_window"]}_{self.now}'
         if not os.path.exists(self.directory):
             os.mkdir(self.directory)
             
-        self.notypename = f'{self.directory}/{self.params.scen_name}_{self.now}'
+        self.notypename = f'{self.directory}/{self.params.scen_name}_B_C{
+                            kwargs["C"]}_T{kwargs["time_window"]}_{self.now}'
             
     def outputmps(self):
         """Output the MPS file."""
-        print('\n----------- Saving model mps -----------\n')
+        print('\n----- Saving model mps -----\n')
         self.problem.model.write(f'{self.notypename}.mps')
         
     def solve(self):
         """Solve the problem, then save the results."""
-        print('\n----------- Solving problem -----------\n')
+        print('\n----- Solving problem -----\n')
         self.problem.solve()
-        print('\n----------- Saving solution files -----------\n')
+        print('\n----- Saving solution files -----\n')
         # Save the results
         print('> Saving sol file...')
         self.problem.model.write(f'{self.notypename}.sol')
@@ -104,3 +132,4 @@ class NodeModel:
         with open(f'{self.notypename}.pkl', 
                   'wb') as f:
             pickle.dump(data, f)
+        return True
