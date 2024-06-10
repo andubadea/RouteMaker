@@ -58,24 +58,32 @@ class ProblemGlobal:
         
         # We also need a constraint violation variable
         self.v_ntwy = []
-        self.pen_ntwy = []
+        # self.pen_ntwy = []
         for ntw in range(len(self.p.nt_list)):
             for y in self.p.Y:
                 tp = ntw,y
                 self.v_ntwy.append(tp)
-                self.pen_ntwy.append(tp)
+                # self.pen_ntwy.append(tp)
                 
         self.v = self.model.addVars(self.v_ntwy,
-                                    vtype = GRB.CONTINUOUS,
                                     lb=0,
+                                    ub=4,
                                     name = 'v')
         
-        # And a penalty variable
-        self.pen = self.model.addVars(self.pen_ntwy,
-                                    vtype = GRB.CONTINUOUS,
-                                    lb=0,
-                                    name = 'pen')
-
+        # # And a penalty variable
+        # self.pen = self.model.addVars(self.pen_ntwy,
+        #                             vtype = GRB.CONTINUOUS,
+        #                             lb=0,
+        #                             name = 'pen')
+        
+    def createObjectiveFunction1(self) -> None:
+        self.model.setObjective(
+            (gb.quicksum(self.z[f,k,y] * (self.p.B_fk[f][k] + self.p.Dlt_y[y])
+                for f,k,y in self.z) + \
+            gb.quicksum(self.pen[ntw,y] 
+                for ntw,y in self.pen))/len(self.p.F), 
+            gb.GRB.MINIMIZE) 
+        
     def createObjectiveFunction2(self) -> None:
         self.model.setObjective((gb.quicksum(self.pen[ntw,y] 
                 for ntw,y in self.pen))/len(self.p.F), 
@@ -85,8 +93,8 @@ class ProblemGlobal:
         self.model.setObjective(
             (gb.quicksum(self.z[f,k,y] * (self.p.B_fk[f][k] + self.p.Dlt_y[y])
                 for f,k,y in self.z) + \
-            gb.quicksum(self.pen[ntw,y] 
-                for ntw,y in self.pen))/len(self.p.F), 
+            gb.quicksum(self.v[ntw,y] 
+                for ntw,y in self.v)), 
             gb.GRB.MINIMIZE) 
 
     def createConstraints(self) -> None:
@@ -113,25 +121,25 @@ class ProblemGlobal:
                             name = 'flow'
         )
         
-        # First penalty constraint
-        self.model.addConstrs((self.p.sw1*(self.v[ntw,y]) \
-                                <= self.pen[ntw,y]
-                              # forall vars
-                            for ntw in range(len(self.p.nt_list))
-                            for y in self.p.Y
-                            ),
-                            name = 'penalty1'
-        )
+        # # First penalty constraint
+        # self.model.addConstrs((self.p.sw1*(self.v[ntw,y]) \
+        #                         <= self.pen[ntw,y]
+        #                       # forall vars
+        #                     for ntw in range(len(self.p.nt_list))
+        #                     for y in self.p.Y
+        #                     ),
+        #                     name = 'penalty1'
+        # )
         
-        # Second penalty constraint
-        self.model.addConstrs((self.p.sw2*(self.v[ntw,y]) - 
-                        (self.p.sw2-self.p.sw1)*self.p.C_n <= self.pen[ntw,y]
-                              # forall vars
-                            for ntw in range(len(self.p.nt_list))
-                            for y in self.p.Y
-                            ),
-                            name = 'penalty2'
-        )
+        # # Second penalty constraint
+        # self.model.addConstrs((self.p.sw2*(self.v[ntw,y]) - 
+        #                 (self.p.sw2-self.p.sw1)*self.p.C_n <= self.pen[ntw,y]
+        #                       # forall vars
+        #                     for ntw in range(len(self.p.nt_list))
+        #                     for y in self.p.Y
+        #                     ),
+        #                     name = 'penalty2'
+        # )
     
     def printSolution(self) -> None:
         pass

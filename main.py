@@ -9,7 +9,7 @@ from models.bound.model import BoundModel as BModel
 mp.set_start_method('fork')
 
 city = CityParser('Vienna')
-scen_idx = city.get_scenario_names(None).index('Flight_intention_30_1')
+scen_idx = city.get_scenario_names(None).index('Flight_intention_120_1')
 name, scenario = parse_scenario(city.scenarios[scen_idx])
 
 param_dict = {'scenario' : scenario, 
@@ -39,16 +39,23 @@ print(f'################### {name} ###################')
 print('\n******* Heuristic model *******\n')
 hmodel = HModel(param_dict)
 
+# Output the MPS file of the heuristic model
+hmodel.outputmps()
+
 print('> Setting heuristic model parameters...')
-hmodel.problem.model.setParam('Threads', 4)
+hmodel.problem.model.setParam('Threads', 8)
 hmodel.problem.model.setParam('Method', 1)
 hmodel.problem.model.setParam('Presolve', 2)
-hmodel.problem.model.setParam('NoRelHeurTime', 60)
-hmodel.problem.model.setParam('Heuristics', 1)
-hmodel.problem.model.setParam('TimeLimit', 120)
+hmodel.problem.model.setParam('NoRelHeurTime', 3600*1)
+# hmodel.problem.model.setParam('Heuristics', 1)
+hmodel.problem.model.setParam('TimeLimit', 3600*24)
 
 hmodel.solve()
 
+# Create the hmodel scenario
+print('> Creating heuristic model scn file...')
+makescen(hmodel)
+quit()
 
 # Then, run the bound model with the heuristic solution as a hot start
 print('\n******* Bound model *******\n')
@@ -59,17 +66,17 @@ bmodel = BModel(param_dict, hmodel)
 
 # Set global problem parameters for the bound model
 print('> Setting bound model parameters...')
-bmodel.problem.model.setParam('Threads', 4)
+bmodel.problem.model.setParam('Threads', 16)
 bmodel.problem.model.setParam('MIPGap', 1e-3)
 bmodel.problem.model.setParam('Method', 1)
 bmodel.problem.model.setParam('Presolve', 2)
 bmodel.problem.model.setParam('MIPFocus', 2)
-bmodel.problem.model.setParam('TimeLimit', 1200)
+bmodel.problem.model.setParam('TimeLimit', 3600*8)
 
 # Solve it
 bmodel.solve()
 
-# Create the scenario
-print('> Creating scn file...')
+# Create the bmodel scenario
+print('> Creating bound model scn file...')
 makescen(bmodel)
 print('\n################### Done! ###################\n\n')

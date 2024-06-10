@@ -73,13 +73,13 @@ class HeuristicModel:
         print('\n----- Creating problem -----\n')
         self.problem = ProblemGlobal(self.params)
         # Write the model
-        self.directory = f'data/output/{self.params.scen_name}_H_C{kwargs["C"]
-                                        }_T{kwargs["time_window"]}_{self.now}'
+        self.directory = f'data/output/{self.params.scen_name}_H_C'
+        self.directory += f'{kwargs["C"]}_T{kwargs["time_window"]}_{self.now}'
         if not os.path.exists(self.directory):
             os.mkdir(self.directory)
             
-        self.notypename = f'{self.directory}/{self.params.scen_name}_H_C{
-                            kwargs["C"]}_T{kwargs["time_window"]}_{self.now}'
+        self.notypename = f'{self.directory}/{self.params.scen_name}_H_C'
+        self.notypename += f'{kwargs["C"]}_T{kwargs["time_window"]}_{self.now}'
             
     def outputmps(self):
         """Output the MPS file."""
