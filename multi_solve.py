@@ -9,7 +9,7 @@ from models.bound.model import BoundModel as BModel
 mp.set_start_method('fork')
 
 city = CityParser('Vienna')
-scen_idx = city.get_scenario_names(None).index('Flight_intention_120_1')
+scen_idx = city.get_scenario_names(None).index('Flight_intention_30_1')
 name, scenario = parse_scenario(city.scenarios[scen_idx])
 
 param_dict = {'scenario' : scenario, 
@@ -40,14 +40,14 @@ print('\n******* Heuristic model *******\n')
 hmodel = HModel(param_dict)
 
 # Output the MPS file of the heuristic model
-hmodel.outputmps()
+# hmodel.outputmps()
 
 print('> Setting heuristic model parameters...')
 hmodel.problem.model.setParam('Threads', 8)
 hmodel.problem.model.setParam('Method', 1)
 hmodel.problem.model.setParam('Presolve', 2)
-hmodel.problem.model.setParam('NoRelHeurTime', 3600*1)
-# hmodel.problem.model.setParam('Heuristics', 1)
+#hmodel.problem.model.setParam('NoRelHeurTime', 3600*1)
+#hmodel.problem.model.setParam('Heuristics', 1)
 hmodel.problem.model.setParam('TimeLimit', 3600*24)
 
 hmodel.solve()
@@ -55,7 +55,6 @@ hmodel.solve()
 # Create the hmodel scenario
 print('> Creating heuristic model scn file...')
 makescen(hmodel)
-quit()
 
 # Then, run the bound model with the heuristic solution as a hot start
 print('\n******* Bound model *******\n')
