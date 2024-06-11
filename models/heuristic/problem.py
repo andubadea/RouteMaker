@@ -89,13 +89,31 @@ class ProblemGlobal:
                 for ntw,y in self.pen))/len(self.p.F), 
             gb.GRB.MINIMIZE) 
         
-    def createObjectiveFunction(self) -> None:
+    def createObjectiveFunction3(self) -> None:
         self.model.setObjective(
             (gb.quicksum(self.z[f,k,y] * (self.p.B_fk[f][k] + self.p.Dlt_y[y])
                 for f,k,y in self.z) + \
             gb.quicksum(self.v[ntw,y] 
                 for ntw,y in self.v)), 
             gb.GRB.MINIMIZE) 
+        
+    def createObjectiveFunction(self) -> None:
+        self.model.setObjectiveN(
+            (gb.quicksum(self.z[f,k,y] * (self.p.B_fk[f][k] + self.p.Dlt_y[y])
+                for f,k,y in self.z)),
+            index = 0,
+            priority = 0,
+            weight = 1/len(self.p.F),
+            name = 'dur')
+        
+        self.model.setObjectiveN(
+            (gb.quicksum(self.v[ntw,y] 
+                for ntw,y in self.v)), 
+            index = 1,
+            priority = 1,
+            weight = 1/len(self.p.N),
+            name = 'v'
+            ) 
 
     def createConstraints(self) -> None:
         # First of all, one altitude and route combination can be
@@ -103,7 +121,7 @@ class ProblemGlobal:
         self.model.addConstrs((gb.quicksum(self.z[f,k,y] 
                                 for k in self.p.K_f[f]
                                 for y in self.p.Y 
-                                ) >= 1 
+                                ) == 1 
                             # forall vars
                             for f in self.p.F
                             ),
