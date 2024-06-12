@@ -81,6 +81,7 @@ class WindowModel:
         # Initialise the time counter
         self.planning_time = 0
         self.planning_step = kwargs['planning_time_step']
+        self.planning_overlap = kwargs['planning_overlap']
         # Get the scenario
         self.scenario = kwargs['scenario']
         
@@ -91,13 +92,22 @@ class WindowModel:
         stop_solving = False
         while not stop_solving:
             plan_time_cutoff = self.planning_time + self.planning_step
-            print(f'\n******* Planning window: {plan_time_cutoff}s *******\n')
+            fixed_time_cutoff = self.planning_time
+            print(f'\n******* Planning window: {self.planning_time}s - '+
+                   f'{plan_time_cutoff}s *******\n')
             stop_solving = True
-            # We extract the aircraft in the current planning time window
+            # We extract the aircraft in the current planning time window. The
+            # aircraft that are within the planning window but outside of the
+            # overlap are the ones that are fixed.
             local_scen = {}
+            ac_fixed = []
             for acid in self.scenario.keys():
                 ac_data = self.scenario[acid]
-                if ac_data[0] <= plan_time_cutoff:
+                if ac_data[0] <= fixed_time_cutoff:
+                    local_scen[acid] = ac_data
+                    # Also add it to the fixed aircraft.
+                    ac_fixed.append(acid)
+                elif ac_data[0] <= plan_time_cutoff:
                     local_scen[acid] = ac_data
                 else:
                     # There is at least one aircraft that must depart after
@@ -108,7 +118,7 @@ class WindowModel:
             params = Parameters(self.p_kwargs, local_scen)
             # Create the problem
             print('\n----- Creating problem -----\n')
-            problem = ProblemGlobal(params, prev_problem)
+            problem = ProblemGlobal(params, prev_problem, ac_fixed)
             for prm in self.p_kwargs['model_params']:
                 problem.model.setParam(prm[0], prm[1])
             print('\n----- Solving problem -----\n')
@@ -116,7 +126,7 @@ class WindowModel:
             print('> Solved!')
             prev_problem = problem
             # Increment the time window
-            self.planning_time += self.planning_step
+            self.planning_time += self.planning_step - self.planning_overlap
         print('> No more aircraft to plan, moving on!')
         # Save complete problem and params
         self.problem = problem

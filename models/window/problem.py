@@ -5,9 +5,11 @@ import numpy as np
 from typing import Any
 
 class ProblemGlobal:
-    def __init__(self, parameters:Parameters, prev_problem:Any = None) -> None:
+    def __init__(self, parameters:Parameters, prev_problem:Any = None,
+                 ac_fixed:list = None) -> None:
         self.p = parameters
         self.prev_problem = prev_problem
+        self.ac_fixed = ac_fixed
         self.rng = np.random.default_rng(42)
         
         self.model = gb.Model(self.p.scen_name)
@@ -71,11 +73,12 @@ class ProblemGlobal:
                                     name = 'v')
         
         if self.prev_problem is not None:
-            # We have a previous problem, set the upper bound and lower bound of
-            # the z variables to whatever was found in the previous problem.
+            # We have a previous problem, set the upper bound and lower bound 
+            # of the z variables to whatever was found in the previous problem.
             for f,k,y in self.prev_problem.z_fky:
-                self.z[f,k,y].lb = self.prev_problem.z[f,k,y].X
-                self.z[f,k,y].ub = self.prev_problem.z[f,k,y].X
+                if self.p.idx2acid[f] in self.ac_fixed:
+                    self.z[f,k,y].lb = self.prev_problem.z[f,k,y].X
+                    self.z[f,k,y].ub = self.prev_problem.z[f,k,y].X
         
     def createObjectiveFunction1(self) -> None:
         self.model.setObjective(

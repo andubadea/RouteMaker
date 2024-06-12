@@ -8,7 +8,7 @@ mp.set_start_method('fork')
 
 city = CityParser('Vienna')
 
-scen_idx = city.get_scenario_names(None).index('Flight_intention_120_1')
+scen_idx = city.get_scenario_names(None).index('Flight_intention_30_1')
 name, scenario = parse_scenario(city.scenarios[scen_idx])
 print(f'################### {name} ###################')
 
@@ -25,6 +25,7 @@ param_dict = {'scenario' : scenario,
         'city' : city, 
         'time_horizon' : 7200, 
         'planning_time_step' : 1200,
+        'planning_overlap' : 300,
         'fl_num' : 10, 
         'fl_size' : 15.24, 
         'C' : 1, 
