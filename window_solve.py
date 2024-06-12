@@ -8,14 +8,15 @@ mp.set_start_method('fork')
 
 city = CityParser('Vienna')
 
-scen_idx = city.get_scenario_names(None).index('Flight_intention_30_1')
+scen_idx = city.get_scenario_names(None).index('Flight_intention_120_1')
 name, scenario = parse_scenario(city.scenarios[scen_idx])
 print(f'################### {name} ###################')
 
 model_params = [
-        ('Threads', 4),
+        ('Threads', 16),
         ('Method', 1),
-        ('NoRelHeurTime', 300),
+        ('NoRelHeurTime', 1200),
+        ('TimeLimit', 1200),
         ('Presolve', 2),
         ('MIPGap', 1e-3),
         ('MIPFocus', 2),

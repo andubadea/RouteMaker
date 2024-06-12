@@ -13,9 +13,12 @@ class ProblemGlobal:
         self.rng = np.random.default_rng(42)
         
         self.model = gb.Model(self.p.scen_name)
+        print('> Creating variables...')
         self.createVars()
         self.model.update
+        print('> Creating objective function...')
         self.createObjectiveFunction()
+        print('> Creating constraints...')
         self.createConstraints()
         self.model.update
         

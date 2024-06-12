@@ -75,7 +75,7 @@ class WindowModel:
             os.mkdir(self.directory)
             
         self.notypename = f'{self.directory}/{scen_name}_W_C'
-        self.notypename += f'{kwargs["C"]}_T{kwargs["time_window"]}_{self.now}'
+        self.notypename += f'{kwargs["C"]}_T{kwargs["time_window"]}'
         # Store the kwargs
         self.p_kwargs = kwargs
         # Initialise the time counter
@@ -93,6 +93,7 @@ class WindowModel:
         while not stop_solving:
             plan_time_cutoff = self.planning_time + self.planning_step
             fixed_time_cutoff = self.planning_time
+            planning_window_str = f'{self.planning_time}-{plan_time_cutoff}'
             print(f'\n******* Planning window: {self.planning_time}s - '+
                    f'{plan_time_cutoff}s *******\n')
             stop_solving = True
@@ -119,6 +120,11 @@ class WindowModel:
             # Create the problem
             print('\n----- Creating problem -----\n')
             problem = ProblemGlobal(params, prev_problem, ac_fixed)
+            print('\n----- Saving intermediate problem mps -----\n')
+            print('> Writing model...')
+            modelname = f'{self.notypename}_{planning_window_str}'
+            problem.model.write(f'{modelname}.mps.zip')
+            print('> Setting model parameters...')
             for prm in self.p_kwargs['model_params']:
                 problem.model.setParam(prm[0], prm[1])
             print('\n----- Solving problem -----\n')
