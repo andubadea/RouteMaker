@@ -8,14 +8,23 @@ mp.set_start_method('fork')
 
 city = CityParser('Vienna')
 
-scen_idx = city.get_scenario_names(None).index('Flight_intention_30_1')
+scen_idx = city.get_scenario_names(None).index('Flight_intention_120_1')
 name, scenario = parse_scenario(city.scenarios[scen_idx])
 print(f'################### {name} ###################')
+
+model_params = [
+        ('Threads', 4),
+        ('Method', 1),
+        ('NoRelHeurTime', 300),
+        ('Presolve', 2),
+        ('MIPGap', 1e-3),
+        ('MIPFocus', 2),
+]
 
 param_dict = {'scenario' : scenario, 
         'city' : city, 
         'time_horizon' : 7200, 
-        'planning_time_step' : 1800,
+        'planning_time_step' : 1200,
         'fl_num' : 10, 
         'fl_size' : 15.24, 
         'C' : 1, 
@@ -31,9 +40,12 @@ param_dict = {'scenario' : scenario,
         'scen_name' : name, 
         'num_cpus' : 4, 
         'seed' : 42, 
-        'force_path_gen' : False   
+        'force_path_gen' : False,
+        'model_params' : model_params
 }
 
 wmodel = WModel(param_dict)
 wmodel.solve()
+print('> Creating scn file...')
 makescen(wmodel)
+print('\n################### Done! ###################\n\n')

@@ -109,12 +109,8 @@ class WindowModel:
             # Create the problem
             print('\n----- Creating problem -----\n')
             problem = ProblemGlobal(params, prev_problem)
-            problem.model.setParam('Threads', 4)
-            problem.model.setParam('Method', 1)
-            problem.model.setParam('NoRelHeurTime', 120)
-            problem.model.setParam('Presolve', 2)
-            problem.model.setParam('MIPGap', 1e-3)
-            problem.model.setParam('MIPFocus', 2)
+            for prm in self.p_kwargs['model_params']:
+                problem.model.setParam(prm[0], prm[1])
             print('\n----- Solving problem -----\n')
             problem.solve()
             print('> Solved!')
@@ -122,8 +118,9 @@ class WindowModel:
             # Increment the time window
             self.planning_time += self.planning_step
         print('> No more aircraft to plan, moving on!')
-        # Save current problem
+        # Save complete problem and params
         self.problem = problem
+        self.params = params
         print('\n----- Saving solution files -----\n')
         # Save the results
         print('> Saving sol file...')

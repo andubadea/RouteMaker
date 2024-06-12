@@ -3,6 +3,8 @@ data/help/*
 *.sol
 *.pkl
 *.scn
+*.mps
+*.lp
 models/paths/cache/*
 
 # Byte-compiled / optimized / DLL files

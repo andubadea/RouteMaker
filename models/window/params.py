@@ -150,8 +150,7 @@ class Parameters:
                     else:
                         # We skip this node
                         continue
-                    
-                    #TODO: Remake the paths to include the last node
+
                     if path_node_idx == len(path_times[path_idx]):
                         # TEMP FIX
                         path_node_idx -= 1
