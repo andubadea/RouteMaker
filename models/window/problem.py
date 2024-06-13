@@ -14,6 +14,7 @@ class ProblemGlobal:
         self.min_time = min_time
         
         self.no_violation = False
+        self.close_enough = False
         
         self.model = gb.Model(self.p.scen_name)
         print('> Creating variables...')
@@ -31,16 +32,28 @@ class ProblemGlobal:
         # Check for constraint violations and time elapsed at every message.
         if where == GRB.Callback.MIPSOL:
             v_var = model.cbGetSolution(self.v)
-            v_tot = 0
-            for ntw,y in self.v_ntwy:
-                if v_var[ntw,y] > 0:
-                    v_tot += v_var[ntw,y]
+            v_tot = sum([v for v in v_var.values() if v > 0])
             if v_tot < 0.5:
                 self.no_violation = True
-            else:
-                self.no_violation = False
+                
+            # Also determine the current gap
+            bound = model.cbGet(GRB.Callback.MIPSOL_OBJBND)
+            bestobj = model.cbGet(GRB.Callback.MIPSOL_OBJBST)
+            
+            # Calculate the best bound percentage
+            gap = abs((bestobj-bound))/abs(bestobj)
+            
+            if gap < model.params.MIPGap: 
+                # We're within the MIPGap tolerance, we can terminate
+                self.close_enough = True
         
-        if where == GRB.Callback.MESSAGE:
+        if where == GRB.Callback.MIP:
+            # Terminate if we are close enough and don't have any violation
+            if self.no_violation and self.close_enough:
+                print('> Close enough, no violations, terminating.')
+                model.terminate()
+            # Otherwise, terminate if we have no violations and are above the
+            # time limit
             runtime = model.cbGet(GRB.Callback.RUNTIME)
             if self.no_violation and runtime > self.min_time:
                 print('> Time limit reached, no violations, terminating.')

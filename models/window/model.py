@@ -143,16 +143,4 @@ class WindowModel:
         # Save the results
         print('> Saving sol file...')
         self.problem.model.write(f'{self.notypename}.sol.zip')
-        # Also output the aircraft information in a pickle
-        # z_dict = {}
-        # for f in self.params.F:
-        #     for k in self.params.K_f[f]:
-        #         for y in self.params.Y:
-        #             z_dict[f,k,y] = self.problem.z[f,k,y].X
-        # print('> Saving data pickle...')
-        # data = [z_dict, self.params]
-                    
-        # with open(f'{self.notypename}.pkl', 
-        #           'wb') as f:
-        #     pickle.dump(data, f)
         return True

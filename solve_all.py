@@ -19,8 +19,6 @@ for tw in tws:
     print(f'@@@@@@@@@@@@@@@@@ Flow time window: {tw}s @@@@@@@@@@@@@@@@@')
     for scenfile in city.scenarios:
         name, scenario = parse_scenario(scenfile)
-        if '_60_' not in name:
-            continue
         print(f'################### {name} ###################')
 
         if heuristic:
@@ -30,7 +28,7 @@ for tw in tws:
                 ('NoRelHeurTime', 3600),
                 ('TimeLimit', 3600),
                 ('Presolve', 2),
-                ('MIPGap', 1e-3),
+                ('MIPGap', 1e-2),
                 ('MIPFocus', 2),
             ]
 
@@ -65,7 +63,7 @@ for tw in tws:
                 ('NoRelHeurTime', 3600*2),
                 ('TimeLimit', 3600*48),
                 ('Presolve', 2),
-                ('MIPGap', 1e-3),
+                ('MIPGap', 1e-2),
                 ('MIPFocus', 2),
             ]
 
