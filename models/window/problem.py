@@ -31,10 +31,12 @@ class ProblemGlobal:
             return
         # Check for constraint violations and time elapsed at every message.
         if where == GRB.Callback.MIPSOL:
-            v_var = model.cbGetSolution(self.v)
-            v_tot = sum([v for v in v_var.values() if v > 0])
-            if v_tot < 0.5:
-                self.no_violation = True
+            if not self.no_violation:
+                v_var = model.cbGetSolution(self.v)
+                if any(v > 0.5 for v in v_var.values()):
+                    return
+                else:
+                    self.no_violation = True
                 
             # Also determine the current gap
             bound = model.cbGet(GRB.Callback.MIPSOL_OBJBND)
@@ -47,7 +49,7 @@ class ProblemGlobal:
                 # We're within the MIPGap tolerance, we can terminate
                 self.close_enough = True
         
-        if where == GRB.Callback.MIP:
+        elif where == GRB.Callback.MIP:
             # Terminate if we are close enough and don't have any violation
             if self.no_violation and self.close_enough:
                 print('> Close enough, no violations, terminating.')
@@ -58,6 +60,9 @@ class ProblemGlobal:
             if self.no_violation and runtime > self.min_time:
                 print('> Time limit reached, no violations, terminating.')
                 model.terminate()
+        
+        else:
+            return
         
     def solve(self) -> bool:
         self.model.optimize(self.callback)
