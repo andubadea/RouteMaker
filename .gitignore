@@ -5,7 +5,7 @@ data/help/*
 *.scn
 *.mps
 *.lp
-*.7z
+*.zip
 models/paths/cache/*
 
 # Byte-compiled / optimized / DLL files

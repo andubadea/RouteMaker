@@ -6,11 +6,14 @@ from typing import Any
 
 class ProblemGlobal:
     def __init__(self, parameters:Parameters, prev_problem:Any = None,
-                 ac_fixed:list = None) -> None:
+                 ac_fixed:list = None, min_time:float = 0) -> None:
         self.p = parameters
         self.prev_problem = prev_problem
         self.ac_fixed = ac_fixed
         self.rng = np.random.default_rng(42)
+        self.min_time = min_time
+        
+        self.no_violation = False
         
         self.model = gb.Model(self.p.scen_name)
         print('> Creating variables...')
@@ -22,8 +25,29 @@ class ProblemGlobal:
         self.createConstraints()
         self.model.update
         
+    def callback(self, model:gb.Model, where:Any):
+        if self.min_time is None:
+            return
+        # Check for constraint violations and time elapsed at every message.
+        if where == GRB.Callback.MIPSOL:
+            v_var = model.cbGetSolution(self.v)
+            v_tot = 0
+            for ntw,y in self.v_ntwy:
+                if v_var[ntw,y] > 0:
+                    v_tot += v_var[ntw,y]
+            if v_tot < 0.5:
+                self.no_violation = True
+            else:
+                self.no_violation = False
+        
+        if where == GRB.Callback.MESSAGE:
+            runtime = model.cbGet(GRB.Callback.RUNTIME)
+            if self.no_violation and runtime > self.min_time:
+                print('> Time limit reached, no violations, terminating.')
+                model.terminate()
+        
     def solve(self) -> bool:
-        self.model.optimize()
+        self.model.optimize(self.callback)
         # Output some data
         # Violations
         v_tot = 0
@@ -31,17 +55,6 @@ class ProblemGlobal:
             if self.v[ntw,y].X > 0:
                 v_tot += 1
         print(f'Total flow constraints violated: {v_tot}')
-        # More than one altitude and path
-        for f in self.p.F:
-            found_one = False
-            for k in self.p.K_f[f]:
-                for y in self.p.Y:
-                    if self.z[f,k,y].X > 0:
-                        if not found_one:
-                            found_one = True
-                        else:
-                            print(self.p.idx2acid(f))
-                            continue
         return True
     
     def createVars(self) -> None:

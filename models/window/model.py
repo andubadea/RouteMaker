@@ -69,6 +69,7 @@ class WindowModel:
         self.now = datetime.now().strftime("%Y%m%d%H%M%S")
         # Create the model directory
         scen_name = kwargs['scen_name']
+        self.min_time = kwargs['min_time']
         self.directory = f'data/output/{scen_name}_W_C'
         self.directory += f'{kwargs["C"]}_T{kwargs["time_window"]}_{self.now}'
         if not os.path.exists(self.directory):
@@ -119,7 +120,8 @@ class WindowModel:
             params = Parameters(self.p_kwargs, local_scen)
             # Create the problem
             print('\n----- Creating problem -----\n')
-            problem = ProblemGlobal(params, prev_problem, ac_fixed)
+            problem = ProblemGlobal(params, prev_problem, ac_fixed, 
+                                    self.min_time)
             print('\n----- Saving intermediate problem mps -----\n')
             print('> Writing model...')
             modelname = f'{self.notypename}_{planning_window_str}'
@@ -140,17 +142,17 @@ class WindowModel:
         print('\n----- Saving solution files -----\n')
         # Save the results
         print('> Saving sol file...')
-        self.problem.model.write(f'{self.notypename}.sol')
+        self.problem.model.write(f'{self.notypename}.sol.zip')
         # Also output the aircraft information in a pickle
-        z_dict = {}
-        for f in self.params.F:
-            for k in self.params.K_f[f]:
-                for y in self.params.Y:
-                    z_dict[f,k,y] = self.problem.z[f,k,y].X
-        print('> Saving data pickle...')
-        data = [z_dict, self.params]
+        # z_dict = {}
+        # for f in self.params.F:
+        #     for k in self.params.K_f[f]:
+        #         for y in self.params.Y:
+        #             z_dict[f,k,y] = self.problem.z[f,k,y].X
+        # print('> Saving data pickle...')
+        # data = [z_dict, self.params]
                     
-        with open(f'{self.notypename}.pkl', 
-                  'wb') as f:
-            pickle.dump(data, f)
+        # with open(f'{self.notypename}.pkl', 
+        #           'wb') as f:
+        #     pickle.dump(data, f)
         return True
