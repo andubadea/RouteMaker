@@ -2,7 +2,6 @@
 data/help/*
 *.sol
 *.pkl
-*.scn
 *.mps
 *.lp
 *.zip
