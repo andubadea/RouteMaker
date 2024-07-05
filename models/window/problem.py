@@ -113,6 +113,8 @@ class ProblemGlobal:
                 if self.p.idx2acid[f] in self.ac_fixed:
                     self.z[f,k,y].lb = self.prev_problem[f,k,y]
                     self.z[f,k,y].ub = self.prev_problem[f,k,y]
+            # Remove prev problem from memory
+            self.prev_problem = None
         
     def createObjectiveFunction1(self) -> None:
         self.model.setObjective(
