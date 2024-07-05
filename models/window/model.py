@@ -89,7 +89,7 @@ class WindowModel:
         
     def solve(self):
         """Solve the problem, then save the results."""
-        prev_problem = None
+        prev_problem_z = None
         stop_solving = False
         while not stop_solving:
             plan_time_cutoff = self.planning_time + self.planning_step
@@ -120,7 +120,7 @@ class WindowModel:
             params = Parameters(self.p_kwargs, local_scen)
             # Create the problem
             print('\n----- Creating problem -----\n')
-            problem = ProblemGlobal(params, prev_problem, ac_fixed, 
+            problem = ProblemGlobal(params, prev_problem_z, ac_fixed, 
                                     self.min_time)
             # print('\n----- Saving intermediate problem mps -----\n')
             # print('> Writing model...')
@@ -132,7 +132,14 @@ class WindowModel:
             print('\n----- Solving problem -----\n')
             problem.solve()
             print('> Solved!')
-            prev_problem = problem
+            # Save the problem parameters in a dictionary
+            if stop_solving == False:
+                print('> Saving problem parameters')
+                prev_problem_z = {}
+                for f,k,y in problem.z_fky:
+                        prev_problem_z[f,k,y] = problem.z[f,k,y].X
+            # Remove previous problem from memory
+            del problem
             # Increment the time window
             self.planning_time += self.planning_step - self.planning_overlap
         print('> No more aircraft to plan, moving on!')

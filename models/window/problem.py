@@ -109,10 +109,10 @@ class ProblemGlobal:
         if self.prev_problem is not None:
             # We have a previous problem, set the upper bound and lower bound 
             # of the z variables to whatever was found in the previous problem.
-            for f,k,y in self.prev_problem.z_fky:
+            for f,k,y in self.prev_problem:
                 if self.p.idx2acid[f] in self.ac_fixed:
-                    self.z[f,k,y].lb = self.prev_problem.z[f,k,y].X
-                    self.z[f,k,y].ub = self.prev_problem.z[f,k,y].X
+                    self.z[f,k,y].lb = self.prev_problem[f,k,y]
+                    self.z[f,k,y].ub = self.prev_problem[f,k,y]
         
     def createObjectiveFunction1(self) -> None:
         self.model.setObjective(
