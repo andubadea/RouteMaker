@@ -122,10 +122,10 @@ class WindowModel:
             print('\n----- Creating problem -----\n')
             problem = ProblemGlobal(params, prev_problem_z, ac_fixed, 
                                     self.min_time)
-            # print('\n----- Saving intermediate problem mps -----\n')
-            # print('> Writing model...')
-            # modelname = f'{self.notypename}_{planning_window_str}'
-            # problem.model.write(f'{modelname}.mps.zip')
+            print('\n----- Saving intermediate problem mps -----\n')
+            print('> Writing model...')
+            modelname = f'{self.notypename}_{planning_window_str}'
+            problem.model.write(f'{modelname}.mps.zip')
             print('> Setting model parameters...')
             for prm in self.p_kwargs['model_params']:
                 problem.model.setParam(prm[0], prm[1])
@@ -148,6 +148,6 @@ class WindowModel:
         self.params = params
         print('\n----- Saving solution files -----\n')
         # Save the results
-        #print('> Saving sol file...')
-        #self.problem.model.write(f'{self.notypename}.sol.zip')
+        print('> Saving sol file...')
+        self.problem.model.write(f'{self.notypename}.sol.zip')
         return True
