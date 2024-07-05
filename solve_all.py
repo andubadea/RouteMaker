@@ -23,7 +23,7 @@ for tw in tws:
 
         if heuristic:
             model_params = [
-                ('Threads', 8),
+                ('Threads', 16),
                 ('Method', 1),
                 ('NoRelHeurTime', 3600),
                 ('TimeLimit', 3600),
