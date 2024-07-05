@@ -23,13 +23,14 @@ for tw in tws:
 
         if heuristic:
             model_params = [
-                ('Threads', 16),
+                ('Threads', 8),
                 ('Method', 1),
-                ('NoRelHeurTime', 3600),
-                ('TimeLimit', 3600),
+                ('NoRelHeurTime', 3600*6),
+                ('TimeLimit', 3600*6),
                 ('Presolve', 2),
                 ('MIPGap', 1e-2),
                 ('MIPFocus', 2),
+                ('SoftMemLimit', 60)
             ]
 
             param_dict = {'scenario' : scenario, 
