@@ -138,8 +138,8 @@ class WindowModel:
                 prev_problem_z = {}
                 for f,k,y in problem.z_fky:
                         prev_problem_z[f,k,y] = problem.z[f,k,y].X
-            # Remove previous problem from memory
-            del problem
+                # Remove previous problem from memory
+                del problem
             # Increment the time window
             self.planning_time += self.planning_step - self.planning_overlap
         print('> No more aircraft to plan, moving on!')
