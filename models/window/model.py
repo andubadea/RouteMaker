@@ -141,6 +141,6 @@ class WindowModel:
         self.params = params
         print('\n----- Saving solution files -----\n')
         # Save the results
-        print('> Saving sol file...')
-        self.problem.model.write(f'{self.notypename}.sol.zip')
+        #print('> Saving sol file...')
+        #self.problem.model.write(f'{self.notypename}.sol.zip')
         return True
