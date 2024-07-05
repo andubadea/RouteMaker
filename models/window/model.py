@@ -122,6 +122,8 @@ class WindowModel:
             print('\n----- Creating problem -----\n')
             problem = ProblemGlobal(params, prev_problem_z, ac_fixed, 
                                     self.min_time)
+            # Don't need prev_problem_z, so remove it
+            prev_problem_z = None
             print('\n----- Saving intermediate problem mps -----\n')
             print('> Writing model...')
             modelname = f'{self.notypename}_{planning_window_str}'
