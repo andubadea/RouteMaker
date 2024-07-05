@@ -14,11 +14,14 @@ else:
     heuristic = False
 
 tws = [5,10,20,30]
+demands = [120]
 
 for tw in tws:
     print(f'@@@@@@@@@@@@@@@@@ Flow time window: {tw}s @@@@@@@@@@@@@@@@@')
     for scenfile in city.scenarios:
         name, scenario = parse_scenario(scenfile)
+        if not any([str(demand) in name for demand in demands]):
+            continue
         print(f'################### {name} ###################')
 
         if heuristic:
