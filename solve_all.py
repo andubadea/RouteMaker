@@ -13,7 +13,7 @@ if len(sys.argv) > 1 and sys.argv[1] == '-h':
 else:
     heuristic = False
 
-tws = [5,10,20,30]
+tws = [30]
 demands = [120]
 
 for tw in tws:
@@ -39,7 +39,7 @@ for tw in tws:
             param_dict = {'scenario' : scenario, 
                 'city' : city, 
                 'time_horizon' : 7200, 
-                'min_time' : 1200,
+                'min_time' : 3600*6,
                 'planning_time_step' : 2100,
                 'planning_overlap' : 300,
                 'fl_num' : 10, 
