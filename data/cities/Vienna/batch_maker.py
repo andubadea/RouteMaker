@@ -3,7 +3,7 @@
 import os
 
 base_dir = 'ENAC/Base'
-base_scens = [x for x in os.listdir(base_dir) if '_60_' in x or '_90_' in x]
+base_scens = [x for x in os.listdir(base_dir) if 'T1' in x]
 wind_mags = [2,4,6]
 wind_dirs = [0,90,180,270]
 delay_mags = [10,30]
@@ -73,6 +73,7 @@ for base_scen in base_scens:
                     f.write(lines)
                     
                 # Write the batch lines as well
+                scen_stripped = scen_name.replace('.scn','')
                 batch_lines += f'00:00:00.00>SCEN {scen_stripped}\n'
                 batch_lines += f'00:00:00.00>PCALL ENAC/{scen_name}\n'
                 batch_lines += f'00:00:00.00>FF\n\n'
@@ -104,6 +105,7 @@ for base_scen in base_scens:
                 f.write(lines)
                 
             # Write the batch lines as well
+            scen_stripped = scen_name.replace('.scn','')
             batch_lines += f'00:00:00.00>SCEN {scen_stripped}\n'
             batch_lines += f'00:00:00.00>PCALL ENAC/{scen_name}\n'
             batch_lines += f'00:00:00.00>FF\n\n'
