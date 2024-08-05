@@ -17,8 +17,7 @@ from shapely.ops import linemerge, unary_union, split
 from shapely.geometry import LineString, Polygon, Point
 
 # For plotting
-colors = list(mcolors.CSS4_COLORS.keys())
-random.shuffle(colors)
+colors = ['red','blue','green','orange','purple']
 DEBUG = False
 PLOT = False
 
@@ -131,7 +130,7 @@ class PathMaker():
             n_rands = N_RAND_PATHS
 
         # Add the random paths
-        ac_paths = self.make_random_routes(origin, destination, 
+        ac_paths += self.make_random_routes(origin, destination, 
                                             n_rands, sh_path, ac_paths)
         if len(ac_paths) > (N_PATHS):
             # We overshot, take the required number of paths
@@ -139,6 +138,41 @@ class PathMaker():
         elif len(ac_paths) < (N_PATHS):
             # Add the shortest path a few more times and done
             ac_paths += [ac_paths[0]]*(N_PATHS-len(ac_paths))
+            
+        # Plot em
+        if acid == 'D6':
+            fig, ax = ox.plot_graph(self.G, node_alpha=0, edge_color='grey', 
+                                        bgcolor='white', show = False)
+            for i in range(len(ac_paths)):
+                # Plot it
+                if i == 0:
+                    # Shortest path
+                    label = 'Shortest path'
+                    linewidth = 6
+                    linestyle = 'solid'
+                # elif i == len(ac_paths)-1:
+                #     # Random route
+                #     label = 'Random path'
+                #     linewidth = 3
+                #     linestyle = 'dotted'
+                else:
+                    label = f'Alternative {i}'
+                    linewidth = 3
+                    linestyle = 'dashed'
+                geom = linemerge([self.edges.loc[(i, j, 0), 'geometry'] 
+                                    for i, j in zip(ac_paths[i][:-1], 
+                                                    ac_paths[i][1:])])
+                ax.plot(geom.xy[0], geom.xy[1], 
+                        color = colors[i], linewidth = linewidth,
+                        label = label, linestyle = linestyle)
+            
+            # ax.plot(self.sh_poly.exterior.coords.xy[0], 
+            #         self.sh_poly.exterior.coords.xy[1], color = 'black', 
+            #         linewidth = 2, label = 'Random path polygon')
+            
+            plt.legend()
+            plt.show()
+            quit()
         
         # Create the complete path dictionary by adding time at each edge.
         ac_paths_dict = self.create_path_dict(acid, ac_paths)
@@ -224,13 +258,16 @@ class PathMaker():
                                         for i, j in zip(alt_route[:-1], 
                                                         alt_route[1:])])
                     ax.plot(alt_geom.xy[0], alt_geom.xy[1], 
-                            color = colors[colori], linewidth = 2)
+                            color = colors[colori], linewidth = 3,
+                            label = f'Alternative {colori + 1}')
                     colori += 1
         if DEBUG or PLOT:
             # Get the geometry in the path
             sh_geom = linemerge([self.edges.loc[(u, v, 0), 'geometry'] 
                              for u, v in sh_edges])
-            ax.plot(sh_geom.xy[0], sh_geom.xy[1], color = 'red', linewidth = 5)
+            ax.plot(sh_geom.xy[0], sh_geom.xy[1], color = 'red', linewidth = 6,
+                    label = 'Shortest path')
+            plt.legend()
             plt.show()
         return alt_routes
     
@@ -293,6 +330,8 @@ class PathMaker():
             ax.plot(sh_poly.exterior.coords.xy[0], 
                     sh_poly.exterior.coords.xy[1], color = 'orange', 
                     linewidth = 5)
+            
+        self.sh_poly = sh_poly
 
         # Get the nodes within this polygon
         sh_poly_nodes = self.nodes[self.nodes.intersects(sh_poly)].index
