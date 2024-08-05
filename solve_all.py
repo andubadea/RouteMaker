@@ -13,8 +13,8 @@ if len(sys.argv) > 1 and sys.argv[1] == '-h':
 else:
     heuristic = False
 
-tws = [30]
-demands = [120]
+tws = [5,10,20]
+demands = [60,90,120]
 
 for tw in tws:
     print(f'@@@@@@@@@@@@@@@@@ Flow time window: {tw}s @@@@@@@@@@@@@@@@@')
@@ -26,14 +26,14 @@ for tw in tws:
 
         if heuristic:
             model_params = [
-                ('Threads', 8),
+                ('Threads', 16),
                 ('Method', 1),
                 ('NoRelHeurTime', 3600*6),
                 ('TimeLimit', 3600*6),
                 ('Presolve', 2),
                 ('MIPGap', 1e-2),
                 ('MIPFocus', 2),
-                ('SoftMemLimit', 60)
+                ('SoftMemLimit', 120)
             ]
 
             param_dict = {'scenario' : scenario, 
