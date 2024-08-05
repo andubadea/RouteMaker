@@ -19,11 +19,12 @@ from shapely.geometry import LineString, Polygon, Point
 # For plotting
 colors = ['red','blue','green','orange','purple']
 DEBUG = False
+DEBUG2 = False
 PLOT = False
 
 # Path generation
-N_PATHS = 5 # Number of non-random paths to generate
-N_RAND_PATHS = 1 # Number of random paths to generate
+N_PATHS = 4 # Number of non-random paths to generate
+N_RAND_PATHS = 0 # Number of random paths to generate
 BUFFER_FACTOR = 2 # Higher means random path subgraph is smaller
 PATH_ATTEMPTS = 50 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
@@ -32,7 +33,7 @@ PATH_LENGTH_FACTOR = 1.25
 PATH_LENGTH_RANDOM_FACTOR = 1.5
 PATH_SIMILARITY_FACTOR = 0.9
 TURN_ANGLE = 25
-n_groups = [3,2,1,8]
+n_groups = [1,2]
 
 class PathMaker():
     """Module to make alternative paths for each aircraft in a scenario.
@@ -123,15 +124,15 @@ class PathMaker():
         
         # Create the deterministic paths
         ac_paths = self.make_deterministic_paths(origin, destination,sh_path)
-        if len(ac_paths) < N_PATHS - N_RAND_PATHS:
-            # We came short of the target, compensate with random paths
-            n_rands = N_RAND_PATHS + (N_PATHS - N_RAND_PATHS - len(ac_paths))
-        else:
-            n_rands = N_RAND_PATHS
+        # if len(ac_paths) < N_PATHS - N_RAND_PATHS:
+        #     # We came short of the target, compensate with random paths
+        #     n_rands = N_RAND_PATHS + (N_PATHS - N_RAND_PATHS - len(ac_paths))
+        # else:
+        #     n_rands = N_RAND_PATHS
 
-        # Add the random paths
-        ac_paths += self.make_random_routes(origin, destination, 
-                                            n_rands, sh_path, ac_paths)
+        # # Add the random paths
+        # ac_paths += self.make_random_routes(origin, destination, 
+        #                                     n_rands, sh_path, ac_paths)
         if len(ac_paths) > (N_PATHS):
             # We overshot, take the required number of paths
             ac_paths = ac_paths[:N_PATHS]
@@ -140,7 +141,7 @@ class PathMaker():
             ac_paths += [ac_paths[0]]*(N_PATHS-len(ac_paths))
             
         # Plot em
-        if acid == 'D6':
+        if DEBUG2:
             fig, ax = ox.plot_graph(self.G, node_alpha=0, edge_color='grey', 
                                         bgcolor='white', show = False)
             for i in range(len(ac_paths)):
@@ -172,7 +173,7 @@ class PathMaker():
             
             plt.legend()
             plt.show()
-            quit()
+            plt.close()
         
         # Create the complete path dictionary by adding time at each edge.
         ac_paths_dict = self.create_path_dict(acid, ac_paths)
@@ -218,8 +219,10 @@ class PathMaker():
             # Stop earlier if we have enough routes
             if len(alt_routes) >= N_PATHS - N_RAND_PATHS:
                 break
+            # We don't want to touch the first 10% and last 10% of the path
+            ten_p_idx = int(len(sh_edges)/10)
             # Divide list of edges into equal parts
-            parts = self.split(sh_edges, n)
+            parts = self.split(sh_edges[ten_p_idx:-ten_p_idx], n)
             # We go part by part and set the weight of each element of the part to a large value
             skips = 0
             for part in parts:
@@ -229,6 +232,7 @@ class PathMaker():
                 # Let's set the length of this guy to a lot
                 G_local = copy.deepcopy(self.G)
                 for u,v in part:
+                    # Avoid setting this for the 10% and last 10% of the path
                     # 100 km should be enough
                     G_local.edges[u,v,0]['length'] = 100000
                 # Now get the path again

@@ -34,7 +34,7 @@ for scen in city.scenarios:
         max_flight_time=1800,
         overlap=True,
         scen_name=name,
-        num_cpus=1,
+        num_cpus=16,
         seed=42,
         force_path_gen = True
         )
