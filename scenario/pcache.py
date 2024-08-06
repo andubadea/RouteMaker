@@ -19,7 +19,7 @@ from shapely.geometry import LineString, Polygon, Point
 # For plotting
 colors = ['red','blue','green','orange','purple']
 DEBUG = False
-DEBUG2 = False
+DEBUG2 = True
 PLOT = False
 
 # Path generation
