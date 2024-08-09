@@ -23,15 +23,15 @@ DEBUG2 = True
 PLOT = False
 
 # Path generation
-N_PATHS = 4 # Number of non-random paths to generate
-N_RAND_PATHS = 0 # Number of random paths to generate
+N_PATHS = 5 # Number of non-random paths to generate
+N_RAND_PATHS = 2 # Number of random paths to generate
 BUFFER_FACTOR = 2 # Higher means random path subgraph is smaller
 PATH_ATTEMPTS = 50 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
 # Length limit for random routes in function of shortest route length
 PATH_LENGTH_FACTOR = 1.25
 PATH_LENGTH_RANDOM_FACTOR = 1.5
-PATH_SIMILARITY_FACTOR = 0.9
+PATH_SIMILARITY_FACTOR = 0.8
 TURN_ANGLE = 25
 n_groups = [1,2]
 
@@ -124,15 +124,15 @@ class PathMaker():
         
         # Create the deterministic paths
         ac_paths = self.make_deterministic_paths(origin, destination,sh_path)
-        # if len(ac_paths) < N_PATHS - N_RAND_PATHS:
-        #     # We came short of the target, compensate with random paths
-        #     n_rands = N_RAND_PATHS + (N_PATHS - N_RAND_PATHS - len(ac_paths))
-        # else:
-        #     n_rands = N_RAND_PATHS
+        if len(ac_paths) < N_PATHS - N_RAND_PATHS:
+            # We came short of the target, compensate with random paths
+            n_rands = N_RAND_PATHS + (N_PATHS - N_RAND_PATHS - len(ac_paths))
+        else:
+            n_rands = N_RAND_PATHS
 
-        # # Add the random paths
-        # ac_paths += self.make_random_routes(origin, destination, 
-        #                                     n_rands, sh_path, ac_paths)
+        # Add the random paths
+        ac_paths += self.make_random_routes(origin, destination, 
+                                            n_rands, sh_path, ac_paths)
         if len(ac_paths) > (N_PATHS):
             # We overshot, take the required number of paths
             ac_paths = ac_paths[:N_PATHS]
