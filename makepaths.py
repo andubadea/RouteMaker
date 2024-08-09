@@ -1,19 +1,14 @@
 import multiprocessing as mp
 from data.parser import CityParser, parse_scenario
 from scenario.pcache import PathMaker
+import tqdm
 mp.set_start_method('fork')
 
 city = CityParser('Vienna')
 
-#scen_idx = city.get_scenario_names(None).index('Flight_intention_90_1')
-#name, scenario = parse_scenario(city.scenarios[scen_idx])
-
-# #Generate all cache files
-for scen in city.scenarios:
+def makepaths(scen):
     name, scenario = parse_scenario(scen)
-    print(f'------ {name} ------')
-
-    # Generate the cache files but don't solve the model
+    # Generate the cache files for this scenario
     _ = PathMaker(scenario=scenario,
         G=city.G,
         nodes=city.nodes,
@@ -38,3 +33,9 @@ for scen in city.scenarios:
         seed=42,
         force_path_gen = True
         )
+    
+if __name__ == "__main__":
+    # Start the multiprocessing
+    with mp.Pool(1) as p:
+        results = list(tqdm.tqdm(p.imap(makepaths, city.scenarios), 
+                            total=len(city.scenarios)))

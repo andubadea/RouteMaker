@@ -33,7 +33,7 @@ PATH_LENGTH_FACTOR = 1.25
 PATH_LENGTH_RANDOM_FACTOR = 1.5
 PATH_SIMILARITY_FACTOR = 0.8
 TURN_ANGLE = 25
-n_groups = [1,2]
+n_groups = [2,1]
 
 class PathMaker():
     """Module to make alternative paths for each aircraft in a scenario.
@@ -80,7 +80,7 @@ class PathMaker():
             # Do single threaded to allow plots
             paths = {}
             for i, acid in enumerate(self.scenario.keys()):
-                print(f'ACID: {acid} | {i+1}/{len(self.scenario)}')
+                #print(f'ACID: {acid} | {i+1}/{len(self.scenario)}')
                 paths[acid] = self.make_paths([self.scenario[acid][1], 
                                             self.scenario[acid][2],
                                             acid])[1]
