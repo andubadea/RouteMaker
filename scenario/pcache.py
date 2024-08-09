@@ -24,7 +24,7 @@ PLOT = False
 
 # Path generation
 N_PATHS = 5 # Number of non-random paths to generate
-N_RAND_PATHS = 2 # Number of random paths to generate
+N_RAND_PATHS = 1 # Number of random paths to generate
 BUFFER_FACTOR = 2 # Higher means random path subgraph is smaller
 PATH_ATTEMPTS = 50 # Higher means more attempts per random path
 N_RAND_NODES = 1 # Number of random intermediate nodes
@@ -126,16 +126,18 @@ class PathMaker():
         ac_paths = self.make_deterministic_paths(origin, destination,sh_path)
         if len(ac_paths) < N_PATHS - N_RAND_PATHS:
             # We came short of the target, compensate with random paths
-            n_rands = N_RAND_PATHS + (N_PATHS - N_RAND_PATHS - len(ac_paths))
+            n_rands = N_PATHS - len(ac_paths)
         else:
             n_rands = N_RAND_PATHS
 
         # Add the random paths
         ac_paths += self.make_random_routes(origin, destination, 
                                             n_rands, sh_path, ac_paths)
+        
         if len(ac_paths) > (N_PATHS):
             # We overshot, take the required number of paths
             ac_paths = ac_paths[:N_PATHS]
+            
         elif len(ac_paths) < (N_PATHS):
             # Add the shortest path a few more times and done
             ac_paths += [ac_paths[0]]*(N_PATHS-len(ac_paths))
@@ -224,10 +226,9 @@ class PathMaker():
             # Divide list of edges into equal parts
             parts = self.split(sh_edges[ten_p_idx:-ten_p_idx], n)
             # We go part by part and set the weight of each element of the part to a large value
-            skips = 0
             for part in parts:
                 # Stop earlier if we have enough routes
-                if len(alt_routes) >= N_PATHS - N_RAND_PATHS or skips >= n/2:
+                if len(alt_routes) >= N_PATHS - N_RAND_PATHS:
                     break
                 # Let's set the length of this guy to a lot
                 G_local = copy.deepcopy(self.G)
@@ -240,8 +241,6 @@ class PathMaker():
                                              weight = "length")
                 # Is this route already in alternative routes?
                 if alt_route in alt_routes:
-                    # Skip this route
-                    skips += 1
                     continue
                 
                 # Check how similar it is compared to the shortest path
