@@ -31,7 +31,8 @@ N_RAND_NODES = 1 # Number of random intermediate nodes
 # Length limit for random routes in function of shortest route length
 PATH_LENGTH_FACTOR = 1.25
 PATH_LENGTH_RANDOM_FACTOR = 1.5
-PATH_SIMILARITY_FACTOR = 0.8
+PATH_SIMILARITY_FACTOR = 0.9
+PATH_SIMILARTY_RANDOM = 0.75
 TURN_ANGLE = 25
 n_groups = [2,1]
 
@@ -249,7 +250,6 @@ class PathMaker():
                 
                 if similarity > PATH_SIMILARITY_FACTOR:
                     # Skip this route
-                    skips += 1
                     continue
                 
                 # Append it
@@ -342,9 +342,9 @@ class PathMaker():
         sh_G = self.G.subgraph(sh_poly_nodes)
         # Within the subgraph, increase the weights of the edges of the shortest
         # path to discourage their use.
-        # for u,v in sh_edges:
-        #     # Make these edges less desirable
-        #     sh_G.edges[u,v,0]['length'] *= 1.1
+        for u,v in sh_edges:
+            # Make these edges less desirable
+            sh_G.edges[u,v,0]['length'] *= 1.1
 
         # The loop
         attempts = 0
@@ -402,6 +402,16 @@ class PathMaker():
             if alt_path in ac_paths:
                 # Try again
                 attempts+=1
+                continue
+            
+            # Check how similar it is compared to the shortest path
+            similarity = sum([node in sh_path 
+                                for node in alt_path]) / len(alt_path)
+            
+            print(similarity, attempts)
+            if similarity > PATH_SIMILARTY_RANDOM:
+                # Try again
+                attempts += 1
                 continue
                 
             # Plot this path
