@@ -36,6 +36,6 @@ def makepaths(scen):
     
 if __name__ == "__main__":
     # Start the multiprocessing
-    with mp.Pool(1) as p:
+    with mp.Pool(16) as p:
         results = list(tqdm.tqdm(p.imap(makepaths, city.scenarios), 
                             total=len(city.scenarios)))
